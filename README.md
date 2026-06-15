@@ -217,26 +217,6 @@ curl -X POST "http://localhost:8080/api/orders/tiktok/123/awb/create" \
 
 # Check AWB result
 curl "http://localhost:8080/api/orders/tiktok/123/awb"
-```
-
-### YT Resolver
-
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/api/yt/health` | Basic health check |
-| POST | `/api/yt/extract` | Resolve a YouTube page URL into a direct stream URL |
-
-Example:
-
-```bash
-curl -X POST "http://localhost:8080/api/yt/extract" \
-  -H "Content-Type: application/json" \
-  -d '{"url":"https://www.youtube.com/watch?v=8pv0mah8TeU"}'
-```
-
-If you set `YT_RESOLVER_TOKEN`, send `Authorization: Bearer <token>` with the request.
-
----
 
 ## Environment Variables
 
