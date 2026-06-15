@@ -1,10 +1,16 @@
-<img src="Manxus_Logo.png" alt="Manxus Logo" width="25%">
+<div align="center">
+  <img src="Manxus_Logo.png" alt="Manxus Logo" width="25%">
 
-# Manxus
+  # Manxus
 
-**Internal Operations Platform for Manzill Globe Trading**
+  **Internal Operations Platform for Manzill Globe Trading**
 
-Manxus is a comprehensive full-stack operations platform designed to streamline the daily operations of Manzill Globe Trading, a Malaysian online grocery retailer operating across Shopee, Lazada, and TikTok Shop. 
+  Manxus is a comprehensive full-stack operations platform designed to streamline the daily operations of Manzill Globe Trading, a Malaysian online grocery retailer operating across Shopee, Lazada, and TikTok Shop.
+</div>
+
+---
+
+## Platform Overview
 
 The platform is composed of four integrated modules—**InvSync**, **ProcSync**, **DocFlow**, and **RevLens**—that work together to automate inventory management, order processing, document workflows, and financial analytics.
 
