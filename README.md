@@ -1,3 +1,4 @@
+![Manxus Logo](Manxus_Logos.png)
 # Manxus
 
 **Internal Operations Platform for Manzill Globe Trading**
