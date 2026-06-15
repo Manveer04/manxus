@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+cookies.txt
+shopee_cookies.json
+urls.txt
+
+# Runtime state with sensitive session/token content
+sessions/*.json
+sessions/**/*.json
+sessions/
+app/data/shopee_tokens/*.json
+app/data/shopee_tokens/**/*.json
+
+# Local data artifacts
+db/*.db
+db/*.sqlite
+db/*.sql
+*.db
+*.DB
+*.sqlite
+data/*.json
+data/**/*.json
+data/*.txt
+data/**/*.txt
+data/*.html
+data/**/*.html
+
+# Editor/OS
+.vscode/
+.DS_Store
+Thumbs.db

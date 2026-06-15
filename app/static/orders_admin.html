@@ -1,0 +1,763 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Orders Admin</title>
+<style>
+:root {
+  --bg: #0f1217;
+  --panel: #171c23;
+  --panel-2: #1f2630;
+  --line: #2c3645;
+  --text: #e8edf5;
+  --muted: #9eaab8;
+  --good: #1bc47d;
+  --warn: #f5b942;
+  --bad: #e25353;
+  --btn: #263244;
+  --btn2: #385172;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: "Segoe UI", Tahoma, sans-serif;
+  background: linear-gradient(160deg, #0e1218, #111825);
+  color: var(--text);
+}
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(10, 14, 20, .75);
+  backdrop-filter: blur(4px);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+.title { font-size: 18px; font-weight: 700; letter-spacing: .2px; }
+.sub { color: var(--muted); font-size: 12px; }
+.wrap { padding: 16px; display: grid; gap: 14px; }
+.cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(120px, 1fr));
+  gap: 10px;
+}
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px;
+}
+.k { color: var(--muted); font-size: 12px; }
+.v { font-size: 22px; font-weight: 700; margin-top: 4px; }
+.tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px;
+}
+button, select, input {
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--btn);
+  color: var(--text);
+  padding: 0 12px;
+}
+button { cursor: pointer; font-weight: 600; }
+button:hover { background: var(--btn2); }
+button.primary { background: #2458a8; }
+button.warn { background: #7a5a1f; }
+button.good { background: #176f4d; }
+.table-wrap {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: auto;
+}
+table { width: 100%; border-collapse: collapse; min-width: 980px; }
+th, td {
+  padding: 10px 8px;
+  border-bottom: 1px solid #253041;
+  text-align: left;
+  font-size: 13px;
+  vertical-align: top;
+}
+th { color: var(--muted); font-weight: 600; background: var(--panel-2); position: sticky; top: 0; z-index: 2; }
+.badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 99px;
+  padding: 3px 8px;
+  font-size: 11px;
+  border: 1px solid;
+}
+.b-ok { color: var(--good); border-color: rgba(27,196,125,.45); background: rgba(27,196,125,.12); }
+.b-pending { color: var(--warn); border-color: rgba(245,185,66,.45); background: rgba(245,185,66,.12); }
+.platform { text-transform: uppercase; font-size: 11px; letter-spacing: .4px; color: #c8d2e2; }
+.item-list { color: #cfd9e7; font-size: 12px; line-height: 1.3; }
+.mono { font-family: Consolas, monospace; }
+.empty { color: var(--muted); text-align: center; padding: 30px; }
+.footer-note { color: var(--muted); font-size: 12px; }
+.action-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.action-row button { height: 30px; padding: 0 8px; font-size: 12px; }
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 11px;
+  border: 1px solid;
+}
+.status-idle { color: var(--muted); border-color: rgba(158,170,184,.35); background: rgba(158,170,184,.08); }
+.status-run { color: #8ec5ff; border-color: rgba(142,197,255,.45); background: rgba(142,197,255,.12); }
+.status-ok { color: var(--good); border-color: rgba(27,196,125,.45); background: rgba(27,196,125,.12); }
+.status-err { color: var(--bad); border-color: rgba(226,83,83,.45); background: rgba(226,83,83,.12); }
+@media (max-width: 900px) {
+  .cards { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
+}
+@media (max-width: 760px) {
+  .topbar {
+    padding: 10px 12px;
+    align-items: flex-start;
+  }
+  .title { font-size: 16px; }
+  .sub { font-size: 11px; }
+  .wrap { padding: 10px; gap: 10px; }
+  .cards { gap: 8px; }
+  .card { padding: 10px; border-radius: 10px; }
+  .v { font-size: 18px; }
+
+  .tools {
+    position: sticky;
+    top: 60px;
+    z-index: 40;
+    padding: 8px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .tools input,
+  .tools select,
+  .tools button {
+    width: 100%;
+    min-height: 40px;
+    font-size: 13px;
+  }
+  .tools #searchInput {
+    grid-column: 1 / -1;
+  }
+
+  .table-wrap {
+    overflow: visible;
+    border: none;
+    background: transparent;
+  }
+  table {
+    min-width: 0;
+    width: 100%;
+  }
+  thead {
+    display: none;
+  }
+  tbody,
+  tr,
+  td {
+    display: block;
+    width: 100%;
+  }
+  tr {
+    margin: 0 0 10px 0;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    overflow: hidden;
+    background: var(--panel);
+  }
+  td {
+    border-bottom: 1px solid #253041;
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+  td:last-child {
+    border-bottom: 0;
+  }
+  td::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    margin-bottom: 3px;
+  }
+  .action-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    width: 100%;
+  }
+  .action-row button {
+    min-height: 46px;
+    padding: 0 12px;
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  /* Focused mobile deep-link mode: opened from notification with ?platform=&order= */
+  body.focus-mobile .topbar,
+  body.focus-mobile .cards,
+  body.focus-mobile .tools {
+    display: none;
+  }
+  body.focus-mobile .wrap {
+    padding: 8px;
+    gap: 8px;
+  }
+  body.focus-mobile .action-row {
+    grid-template-columns: 1fr;
+  }
+  body.focus-mobile .action-row .notify-btn,
+  body.focus-mobile .action-row .status-chip {
+    display: none;
+  }
+}
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <div>
+      <div class="title">Orders Admin</div>
+      <div class="sub">Track retrieved orders and notification delivery to ntfy</div>
+    </div>
+    <div style="display:flex; gap:8px; align-items:center;">
+      <a href="/" style="color:#cdd7e7; font-size:13px; text-decoration:none; border:1px solid var(--line); border-radius:8px; padding:8px 10px; background:var(--panel);">Back to Dashboard</a>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="cards">
+      <div class="card"><div class="k">Total Orders</div><div class="v" id="sumTotal">0</div></div>
+      <div class="card"><div class="k">Notified</div><div class="v" id="sumNotified">0</div></div>
+      <div class="card"><div class="k">Pending Notify</div><div class="v" id="sumPending">0</div></div>
+      <div class="card"><div class="k">Last Refresh</div><div class="v" id="sumAt" style="font-size:14px">-</div></div>
+    </div>
+
+    <div class="tools">
+      <button class="primary" onclick="fetchOrdersNow()">Fetch Orders Now</button>
+      <button class="warn" onclick="retryMissed()">Retry Missed Notifications</button>
+      <button class="good" onclick="refreshAll()">Refresh View</button>
+      <select id="platformFilter" onchange="renderOrders()">
+        <option value="">All Platforms</option>
+        <option value="shopee">Shopee</option>
+        <option value="lazada">Lazada</option>
+        <option value="tiktok">TikTok</option>
+      </select>
+      <select id="notifyFilter" onchange="renderOrders()">
+        <option value="">All Notification States</option>
+        <option value="yes">Notified</option>
+        <option value="no">Pending</option>
+      </select>
+      <input id="searchInput" placeholder="Search order id / buyer" oninput="renderOrders()" />
+      <select id="limitSelect" onchange="refreshOrders()">
+        <option value="100">100 rows</option>
+        <option value="300" selected>300 rows</option>
+        <option value="1000">1000 rows</option>
+      </select>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Platform</th>
+            <th>Order ID</th>
+            <th>Status</th>
+            <th>Buyer</th>
+            <th>Total</th>
+            <th>Items</th>
+            <th>Created</th>
+            <th>Notify</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="ordersBody">
+          <tr><td colspan="10" class="empty">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="footer-note" id="footNote">Ready.</div>
+  </div>
+
+<script>
+let allOrders = [];
+const actionStateByOrder = {};
+let deepLinkPlatform = '';
+let deepLinkOrder = '';
+
+function applyFocusMode() {
+  const isMobile = window.matchMedia('(max-width: 760px)').matches;
+  const isDeepLinked = !!deepLinkPlatform && !!deepLinkOrder;
+  document.body.classList.toggle('focus-mobile', isMobile && isDeepLinked);
+}
+
+function applyDeepLinkFilters() {
+  const params = new URLSearchParams(window.location.search || '');
+  deepLinkPlatform = (params.get('platform') || '').trim().toLowerCase();
+  deepLinkOrder = (params.get('order') || '').trim().toLowerCase();
+
+  if (deepLinkPlatform) {
+    const platformFilter = document.getElementById('platformFilter');
+    const hasOption = Array.from(platformFilter.options).some(o => o.value === deepLinkPlatform);
+    if (hasOption) platformFilter.value = deepLinkPlatform;
+  }
+  if (deepLinkOrder) {
+    document.getElementById('searchInput').value = deepLinkOrder;
+  }
+  applyFocusMode();
+}
+
+function esc(v) {
+  return String(v ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function fmtTime(s) {
+  if (!s) return "-";
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return esc(s);
+  return d.toLocaleString();
+}
+
+function setNote(msg) {
+  document.getElementById("footNote").textContent = msg;
+}
+
+function setOrderState(orderId, state, text) {
+  actionStateByOrder[String(orderId)] = {
+    cls: state || 'status-idle',
+    text: text || 'idle',
+    ts: Date.now(),
+  };
+  renderOrders();
+}
+
+async function api(path, options = {}) {
+  const headers = new Headers(options.headers || {});
+  const initialOptions = { ...options, headers };
+  let res = await fetch(path, { ...initialOptions, credentials: 'same-origin' });
+  if (res.status === 401) {
+    const next = encodeURIComponent(window.location.pathname + window.location.search);
+    window.location.href = `/auth/login?next=${next}`;
+    throw new Error('Authentication required');
+  }
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.detail || ("HTTP " + res.status));
+  return data;
+}
+
+async function refreshSummary() {
+  const sum = await api('/api/orders/summary');
+  document.getElementById('sumTotal').textContent = sum.total ?? 0;
+  document.getElementById('sumNotified').textContent = sum.notified ?? 0;
+  document.getElementById('sumPending').textContent = sum.pending ?? 0;
+  document.getElementById('sumAt').textContent = new Date().toLocaleTimeString();
+}
+
+async function refreshOrders() {
+  const limit = Number(document.getElementById('limitSelect').value || '300');
+  allOrders = await api('/api/orders?limit=' + encodeURIComponent(limit));
+  renderOrders();
+}
+
+function renderOrders() {
+  const body = document.getElementById('ordersBody');
+  const p = document.getElementById('platformFilter').value;
+  const n = document.getElementById('notifyFilter').value;
+  const q = (document.getElementById('searchInput').value || '').trim().toLowerCase();
+
+  let rows = allOrders.slice();
+  if (p) rows = rows.filter(r => (r.platform || '') === p);
+  if (n === 'yes') rows = rows.filter(r => !!r.notified);
+  if (n === 'no') rows = rows.filter(r => !r.notified);
+  if (q) {
+    rows = rows.filter(r =>
+      String(r.platform_order_id || '').toLowerCase().includes(q) ||
+      String(r.buyer_name || '').toLowerCase().includes(q)
+    );
+  }
+
+  if (deepLinkPlatform && deepLinkOrder) {
+    rows.sort((a, b) => {
+      const am = String(a.platform || '').toLowerCase() === deepLinkPlatform &&
+        String(a.platform_order_id || '').toLowerCase() === deepLinkOrder;
+      const bm = String(b.platform || '').toLowerCase() === deepLinkPlatform &&
+        String(b.platform_order_id || '').toLowerCase() === deepLinkOrder;
+      return Number(bm) - Number(am);
+    });
+  }
+
+  if (!rows.length) {
+    body.innerHTML = '<tr><td colspan="10" class="empty">No orders found for current filters.</td></tr>';
+    return;
+  }
+
+  body.innerHTML = rows.map(r => {
+    const items = (r.items || []).map(it => {
+      const qty = Number(it.qty || 0);
+      return esc(it.name || '-') + ' x' + qty;
+    }).slice(0, 3);
+    const more = (r.items || []).length > 3 ? (' +' + ((r.items || []).length - 3) + ' more') : '';
+    const badge = r.notified
+      ? '<span class="badge b-ok">sent</span>'
+      : '<span class="badge b-pending">pending</span>';
+    const notifyBtn = r.notified
+      ? '<button class="notify-btn" onclick="resend(' + Number(r.id) + ')">Resend</button>'
+      : '<button class="notify-btn warn" onclick="resend(' + Number(r.id) + ')">Send Now</button>';
+
+     const isShopee = (r.platform === 'shopee' || r.platform === 'shopee_sg');
+     const isLazada = (r.platform === 'lazada');
+     const isTikTok = (r.platform === 'tiktok');
+    const state = actionStateByOrder[String(r.id)] || { cls: 'status-idle', text: 'idle' };
+    const stateChip = '<span class="status-chip ' + esc(state.cls) + '">' + esc(state.text) + '</span>';
+     const shipBtns = (isShopee || isLazada || isTikTok)
+      ? ('<button class="good" onclick="shipAndPrint(' + Number(r.id) + ',\'' + esc(r.platform) + '\')">Ship+AWB</button>' +
+        '<button onclick="arrangeShipment(' + Number(r.id) + ',\'' + esc(r.platform) + '\')">Arrange</button>' +
+        '<button onclick="createAwb(' + Number(r.id) + ',\'' + esc(r.platform) + '\')">Create AWB</button>' +
+        '<button onclick="openAwb(' + Number(r.id) + ',\'' + esc(r.platform) + '\')">Print AWB</button>')
+      : '';
+    const actionCell = '<div class="action-row">' + notifyBtn + shipBtns + stateChip + '</div>';
+
+    return '<tr>' +
+      '<td data-label="ID" class="mono">' + Number(r.id) + '</td>' +
+      '<td data-label="Platform"><span class="platform">' + esc(r.platform || '-') + '</span></td>' +
+      '<td data-label="Order ID" class="mono">' + esc(r.platform_order_id || '-') + '</td>' +
+      '<td data-label="Status">' + esc(r.status || '-') + '</td>' +
+      '<td data-label="Buyer">' + esc(r.buyer_name || '-') + '</td>' +
+      '<td data-label="Total">RM ' + Number(r.total_price || 0).toFixed(2) + '</td>' +
+      '<td data-label="Items" class="item-list">' + (items.join('<br/>') + esc(more)) + '</td>' +
+      '<td data-label="Created">' + esc(fmtTime(r.platform_created_at || r.created_at)) + '</td>' +
+      '<td data-label="Notify">' + badge + '</td>' +
+      '<td data-label="Action">' + actionCell + '</td>' +
+    '</tr>';
+  }).join('');
+}
+
+async function fetchOrdersNow() {
+  setNote('Fetching latest orders...');
+  try {
+    const out = await api('/api/orders/fetch', { method: 'POST' });
+    setNote('Fetch complete. New orders: ' + JSON.stringify(out.new_orders || {}));
+    await refreshAll();
+  } catch (e) {
+    setNote('Fetch failed: ' + e.message);
+  }
+}
+
+async function retryMissed() {
+  setNote('Retrying pending notifications...');
+  try {
+    const out = await api('/api/orders/retry-notifications?limit=500', { method: 'POST' });
+    setNote('Retried notifications: ' + Number(out.retried_notifications || 0));
+    await refreshAll();
+  } catch (e) {
+    setNote('Retry failed: ' + e.message);
+  }
+}
+
+async function resend(orderId) {
+  setNote('Sending notification for order #' + orderId + '...');
+  try {
+    await api('/api/orders/' + encodeURIComponent(orderId) + '/notify', { method: 'POST' });
+    setNote('Notification sent for order #' + orderId);
+    await refreshAll();
+  } catch (e) {
+    setNote('Send failed for order #' + orderId + ': ' + e.message);
+  }
+}
+
+function _platformEndpoints(platform, orderId) {
+  const p = String(platform || '').toLowerCase();
+  if (p === 'lazada') {
+    return {
+      arrange: '/api/orders/lazada/' + encodeURIComponent(orderId) + '/arrange-shipment',
+      awbCreate: '/api/orders/lazada/' + encodeURIComponent(orderId) + '/awb/create',
+      awbGet: '/api/orders/lazada/' + encodeURIComponent(orderId) + '/awb',
+      awbBody: { wait_seconds: 25, poll_seconds: 2 },
+    };
+  }
+  if (p === 'tiktok') {
+    return {
+      arrange: '/api/orders/tiktok/' + encodeURIComponent(orderId) + '/arrange-shipment',
+      awbCreate: '/api/orders/tiktok/' + encodeURIComponent(orderId) + '/awb/create',
+      awbGet: '/api/orders/tiktok/' + encodeURIComponent(orderId) + '/awb',
+      awbBody: { package_id: '', wait_seconds: 25, poll_seconds: 2 },
+    };
+  }
+  return {
+    shippingParam: '/api/orders/shopee/' + encodeURIComponent(orderId) + '/shipping-parameter',
+    arrange: '/api/orders/shopee/' + encodeURIComponent(orderId) + '/arrange-shipment',
+    awbCreate: '/api/orders/shopee/' + encodeURIComponent(orderId) + '/awb/create',
+    awbGet: '/api/orders/shopee/' + encodeURIComponent(orderId) + '/awb',
+    awbBody: { package_number: '', shipping_document_type: '', wait_seconds: 120, poll_seconds: 3 },
+  };
+}
+
+function _isShopeePlatform(platform) {
+  const p = String(platform || '').toLowerCase();
+  return p === 'shopee' || p === 'shopee_sg';
+}
+
+function _sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function _getLazadaArrangeBody(orderId) {
+  const deliveryType = (window.prompt('Lazada DeliveryType for order #' + orderId, 'Dropship') || '').trim();
+  if (!deliveryType) throw new Error('Lazada arrange cancelled: DeliveryType is required.');
+
+  const shippingProvider = (window.prompt('Lazada ShippingProvider for order #' + orderId, 'J&T Express') || '').trim();
+  if (!shippingProvider) throw new Error('Lazada arrange cancelled: ShippingProvider is required.');
+
+  const trackingNumber = (window.prompt('Lazada TrackingNumber for order #' + orderId, '') || '').trim();
+  if (!trackingNumber) throw new Error('Lazada arrange cancelled: TrackingNumber is required.');
+
+  return {
+    delivery_type: deliveryType,
+    shipping_provider: shippingProvider,
+    tracking_number: trackingNumber,
+  };
+}
+
+async function _arrangeShopeeWithPreflight(orderId, platform) {
+  const ep = _platformEndpoints(platform, orderId);
+  setOrderState(orderId, 'status-run', 'preflight');
+  setNote('Shopee preflight get_shipping_parameter for order #' + orderId + '...');
+  await api(ep.shippingParam);
+
+  setOrderState(orderId, 'status-run', 'arranging');
+  setNote('Shopee ship_order for order #' + orderId + '...');
+  return api(ep.arrange, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ package_number: '', dropoff: {} }),
+  });
+}
+
+async function _arrangeLazadaStrict(orderId, platform) {
+  const ep = _platformEndpoints(platform, orderId);
+  const arrangeBody = _getLazadaArrangeBody(orderId);
+  setOrderState(orderId, 'status-run', 'packed>rts');
+  setNote('Lazada packed -> ready_to_ship sequence for order #' + orderId + '...');
+  return api(ep.arrange, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(arrangeBody),
+  });
+}
+
+async function _arrangeTikTok(orderId, platform) {
+  const ep = _platformEndpoints(platform, orderId);
+  setOrderState(orderId, 'status-run', 'arranging');
+  setNote('TikTok ShipPackage for order #' + orderId + '...');
+  return api(ep.arrange, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ package_id: '' }),
+  });
+}
+
+async function arrangeShipment(orderId, platform) {
+  const p = String(platform || '').toLowerCase();
+  setOrderState(orderId, 'status-run', 'arranging');
+  setNote('Arranging shipment for ' + p + ' order #' + orderId + '...');
+  try {
+    let out;
+    if (_isShopeePlatform(p)) {
+      out = await _arrangeShopeeWithPreflight(orderId, p);
+    } else if (p === 'lazada') {
+      out = await _arrangeLazadaStrict(orderId, p);
+    } else if (p === 'tiktok') {
+      out = await _arrangeTikTok(orderId, p);
+    } else {
+      throw new Error('Unsupported platform: ' + p);
+    }
+    setOrderState(orderId, 'status-ok', 'shipment arranged');
+    setNote('Shipment arranged for ' + p + ' order #' + orderId + ': ' + JSON.stringify(out.response || out.result || {}));
+    await refreshAll();
+  } catch (e) {
+    setOrderState(orderId, 'status-err', 'arrange failed');
+    setNote('Arrange shipment failed for ' + p + ' order #' + orderId + ': ' + e.message);
+  }
+}
+
+async function createAwb(orderId, platform) {
+  const p = String(platform || '').toLowerCase();
+  const ep = _platformEndpoints(p, orderId);
+  setOrderState(orderId, 'status-run', 'creating awb');
+  setNote('Creating AWB for ' + p + ' order #' + orderId + '...');
+  try {
+    const out = await api(ep.awbCreate, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(ep.awbBody),
+    });
+
+    if (out.print_url) {
+      setOrderState(orderId, 'status-ok', 'awb ready');
+      setNote('AWB ready for ' + p + ' order #' + orderId + '. Opening print URL...');
+      window.open(out.print_url, '_blank', 'noopener');
+    } else if (_isShopeePlatform(p) && out.warning === 'api_print_unavailable_use_seller_centre') {
+      setOrderState(orderId, 'status-ok', 'manual print');
+      setNote('Shopee API print unavailable for order #' + orderId + '. Please print AWB in Seller Centre.');
+    } else {
+      setOrderState(orderId, 'status-run', 'awb pending');
+      setNote('AWB create requested for ' + p + ' order #' + orderId + '. Print URL not ready yet; use Print AWB after a moment.');
+    }
+    await refreshAll();
+  } catch (e) {
+    setOrderState(orderId, 'status-err', 'awb failed');
+    setNote('Create AWB failed for ' + p + ' order #' + orderId + ': ' + e.message);
+  }
+}
+
+async function openAwb(orderId, platform) {
+  const p = String(platform || '').toLowerCase();
+  const ep = _platformEndpoints(p, orderId);
+  setOrderState(orderId, 'status-run', 'checking awb');
+  setNote('Checking AWB print URL for ' + p + ' order #' + orderId + '...');
+  try {
+    const out = await api(ep.awbGet);
+    if (!out.print_url) {
+      setOrderState(orderId, 'status-run', 'awb pending');
+      setNote('No print URL ready yet for ' + p + ' order #' + orderId + '. Try Create AWB first.');
+      return;
+    }
+    setOrderState(orderId, 'status-ok', 'opened awb');
+    setNote('Opening AWB for ' + p + ' order #' + orderId + '...');
+    window.open(out.print_url, '_blank', 'noopener');
+  } catch (e) {
+    setOrderState(orderId, 'status-err', 'print failed');
+    setNote('Fetch AWB failed for ' + p + ' order #' + orderId + ': ' + e.message);
+  }
+}
+
+async function _createShopeeAwbWithRetries(orderId, ep) {
+  const maxAttempts = 5;
+  const retryIntervalMs = 60000;
+  let lastErr = null;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    setOrderState(orderId, 'status-run', 'awb attempt ' + attempt + '/' + maxAttempts);
+    setNote('Shopee AWB attempt ' + attempt + '/' + maxAttempts + ' for order #' + orderId + '...');
+
+    try {
+      const out = await api(ep.awbCreate, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(Object.assign({}, ep.awbBody, { wait_seconds: 60, poll_seconds: 3 })),
+      });
+
+      if (out.print_url) {
+        return out;
+      }
+
+      if (out.warning === 'api_print_unavailable_use_seller_centre') {
+        return out;
+      }
+
+      if (attempt < maxAttempts) {
+        setNote('Shopee AWB not ready yet for order #' + orderId + '. Retrying in 60 seconds...');
+        await _sleep(retryIntervalMs);
+      }
+    } catch (e) {
+      lastErr = e;
+      if (attempt < maxAttempts) {
+        setNote('Shopee AWB attempt ' + attempt + ' failed for order #' + orderId + ': ' + e.message + '. Retrying in 60 seconds...');
+        await _sleep(retryIntervalMs);
+      }
+    }
+  }
+
+  if (lastErr) {
+    throw lastErr;
+  }
+  throw new Error('Shopee AWB was not ready after 5 attempts.');
+}
+
+async function shipAndPrint(orderId, platform) {
+  const p = String(platform || '').toLowerCase();
+  const ep = _platformEndpoints(p, orderId);
+  setOrderState(orderId, 'status-run', 'ship+awb');
+  setNote('Running one-click Ship+AWB for ' + p + ' order #' + orderId + '...');
+  try {
+    if (_isShopeePlatform(p)) {
+      await _arrangeShopeeWithPreflight(orderId, p);
+    } else if (p === 'lazada') {
+      await _arrangeLazadaStrict(orderId, p);
+    } else if (p === 'tiktok') {
+      const tiktokArrangeOut = await _arrangeTikTok(orderId, p);
+      if (tiktokArrangeOut && tiktokArrangeOut.package_id) {
+        ep.awbBody.package_id = String(tiktokArrangeOut.package_id);
+      }
+    } else {
+      throw new Error('Unsupported platform: ' + p);
+    }
+
+    setOrderState(orderId, 'status-run', 'shipment arranged');
+
+    let out;
+    if (_isShopeePlatform(p)) {
+      setNote('Shipment arranged - AWB will be ready in a few minutes. Waiting 3 minutes before creating AWB...');
+      setOrderState(orderId, 'status-run', 'awb delay 3m');
+      await _sleep(180000);
+      out = await _createShopeeAwbWithRetries(orderId, ep);
+    } else {
+      const awbBody = Object.assign({}, ep.awbBody, { wait_seconds: 30, poll_seconds: 2 });
+      out = await api(ep.awbCreate, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(awbBody),
+      });
+    }
+
+    if (out.print_url) {
+      setOrderState(orderId, 'status-ok', 'printed');
+      setNote('Shipment arranged and AWB ready for ' + p + ' order #' + orderId + '. Opening print URL...');
+      window.open(out.print_url, '_blank', 'noopener');
+    } else if (_isShopeePlatform(p) && out.warning === 'api_print_unavailable_use_seller_centre') {
+      setOrderState(orderId, 'status-ok', 'manual print');
+      setNote('Shipment arranged for Shopee order #' + orderId + '. API print still unavailable after retry window, please print AWB in Seller Centre.');
+    } else {
+      setOrderState(orderId, 'status-run', 'awb pending');
+      setNote('Shipment arranged for ' + p + ' order #' + orderId + '. AWB still pending, try Print AWB shortly.');
+    }
+    await refreshAll();
+  } catch (e) {
+    setOrderState(orderId, 'status-err', 'ship+awb failed');
+    setNote('Ship+AWB failed for ' + p + ' order #' + orderId + ': ' + e.message);
+  }
+}
+
+async function refreshAll() {
+  await Promise.all([refreshSummary(), refreshOrders()]);
+}
+
+applyDeepLinkFilters();
+window.addEventListener('resize', applyFocusMode);
+refreshAll().catch(err => setNote('Load failed: ' + err.message));
+</script>
+</body>
+</html>

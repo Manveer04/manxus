@@ -1,0 +1,54 @@
+services:
+  inventory-sync:
+    build: .
+    container_name: inventory-sync
+    ports:
+      - "8080:8000"
+      - "6080:6080"
+    volumes:
+      - ./sessions:/app/sessions
+      - ./data:/app/data
+      - ./db:/app/db
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=sqlite:////app/db/inventory.db
+      - ORDER_ACTION_BASE_URL=${ORDER_ACTION_BASE_URL}
+      - PUBLIC_BASE_URL=${PUBLIC_BASE_URL}
+      - SYNC_INTERVAL_MINUTES=${SYNC_INTERVAL_MINUTES:-30}
+      - ORDER_INTERVAL_MINUTES=${ORDER_INTERVAL_MINUTES:-10}
+      - AUTO_SYNC_ENABLED=${AUTO_SYNC_ENABLED:-true}
+      - DISPLAY=:99
+      - TIKTOK_APP_KEY=${TIKTOK_APP_KEY}
+      - TIKTOK_APP_SECRET=${TIKTOK_APP_SECRET}
+      - TIKTOK_AUTH_CODE=${TIKTOK_AUTH_CODE:-}
+      - LAZADA_APP_KEY=${LAZADA_APP_KEY}
+      - LAZADA_APP_SECRET=${LAZADA_APP_SECRET}
+      - LAZADA_AUTH_CODE=${LAZADA_AUTH_CODE:-}
+      - TZ=Asia/Kuala_Lumpur
+      - SHOPEE_APP_KEY=${SHOPEE_APP_KEY}
+      - SHOPEE_APP_SECRET=${SHOPEE_APP_SECRET}
+      - SHOPEE_MAIN_SHOP_ID=${SHOPEE_MAIN_SHOP_ID}
+      - SHOPEE_ACCESS_TOKEN=${SHOPEE_ACCESS_TOKEN:-}
+      - SHOPEE_REFRESH_TOKEN=${SHOPEE_REFRESH_TOKEN:-}
+      - SHOPEE_SG_SHOP_ID=${SHOPEE_SG_SHOP_ID}
+      - YAHOO_EMAIL=${YAHOO_EMAIL:-}
+      - YAHOO_APP_PASSWORD=${YAHOO_APP_PASSWORD:-}
+      - COGS_LIFO_SWITCH_DATE=${COGS_LIFO_SWITCH_DATE:-}
+      - NTFY_TOPIC=${NTFY_TOPIC:-}
+      - YT_RESOLVER_TOKEN=${YT_RESOLVER_TOKEN:-}
+      - APP_BASIC_AUTH_USER=${APP_BASIC_AUTH_USER:-}
+      - APP_BASIC_AUTH_PASSWORD=${APP_BASIC_AUTH_PASSWORD:-}
+      - REQUIRE_API_AUTH=${REQUIRE_API_AUTH:-true}
+      - ALLOW_REMOTE_DATABASE=${ALLOW_REMOTE_DATABASE:-false}
+      - TOKEN_ENCRYPTION_KEY=${TOKEN_ENCRYPTION_KEY:-}
+      - APP_OAUTH_STATE_SECRET=${APP_OAUTH_STATE_SECRET:-}
+      - ENFORCE_HTTPS=${ENFORCE_HTTPS:-false}
+      - ALLOW_INSECURE_REDIRECT_URI=${ALLOW_INSECURE_REDIRECT_URI:-false}
+    restart: unless-stopped
+    shm_size: "2gb"
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARED_TUNNEL_TOKEN}

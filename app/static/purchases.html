@@ -1,0 +1,4131 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ProcSync — Manzill Globe</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:        #0d0f12;
+    --surface:   #151820;
+    --border:    #222630;
+    --border2:   #2c3140;
+    --text:      #c8cdd8;
+    --muted:     #606878;
+    --shopee:    #f06024;
+    --shopee-sg: #ff8b61;
+    --lazada:    #5b66f5;
+    --tiktok:    #25f4ee;
+    --green:     #22c55e;
+    --red:       #ef4444;
+    --amber:     #f59e0b;
+    --mono:      'IBM Plex Mono', monospace;
+    --sans:      'IBM Plex Sans', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    min-height: 100vh;
+  }
+  body.modal-open {
+    overflow: hidden;
+    height: 100vh;
+  }
+
+  /* â”€â”€ Nav â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+  nav {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--border);
+    background: #0b0d11;
+    position: sticky;
+    top: 0;
+    z-index: 20;
+  }
+  .nav-brand {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: .08em;
+    color: #fff;
+    margin-right: 12px;
+  }
+  .nav-brand span { color: var(--amber); }
+  .nav-link {
+    text-decoration: none;
+    color: var(--text);
+    border: 1px solid var(--border2);
+    border-radius: 999px;
+    padding: 6px 11px;
+    font-size: 12px;
+  }
+  .nav-link:hover { border-color: var(--amber); color: #fff; }
+  .nav-link.active { background: rgba(245,158,11,.16); border-color: var(--amber); color: #fff; }
+  .nav-right { margin-left: auto; }
+
+  .page { padding: 18px 20px 26px; }
+  .page-header { margin-bottom: 12px; }
+  .page-title {
+    font-family: var(--mono);
+    font-size: 20px;
+    color: #fff;
+    letter-spacing: .03em;
+  }
+  .page-sub { color: var(--muted); margin-top: 2px; margin-bottom: 6px; }
+  .workflow {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 6px;
+    line-height: 1.5;
+  }
+
+  .grid-2 { display: grid; grid-template-columns: 380px 1fr; gap: 20px; align-items: start; }
+  @media(max-width:860px){ .grid-2 { grid-template-columns:1fr; } }
+
+    /* Hidden by default; shown in mobile media query. */
+    #mobile-actions-fab { display: none; }
+
+  @media(max-width:860px) {
+    :root { --muted: #8a93a4; }
+
+    body.large-text {
+      font-size: 17px !important;
+      line-height: 1.6;
+    }
+
+    body.large-text .btn,
+    body.large-text .form-control,
+    body.large-text .panel-title,
+    body.large-text th,
+    body.large-text td {
+      font-size: 13px !important;
+    }
+
+    body.modal-open #mobile-actions-fab { display: none !important; }
+    nav { display: none; }
+    body {
+      font-size: 15px;
+      line-height: 1.45;
+      padding-bottom: calc(92px + env(safe-area-inset-bottom));
+    }
+    .page { padding: 12px 12px 24px; }
+    input, select, textarea { font-size: 16px; }
+
+    .btn, .form-control { min-height: 44px; }
+    .panel-body { padding: 14px; }
+    .panel-header {
+      padding: 12px 14px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    #desktop-actions { display: none !important; }
+
+    #mobile-actions-fab {
+      display: flex;
+      position: fixed;
+      right: 14px;
+      bottom: calc(14px + env(safe-area-inset-bottom));
+      z-index: 650;
+      flex-direction: column;
+      align-items: flex-end;
+    }
+
+    #mobile-actions-menu {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 10px;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(8px);
+      pointer-events: none;
+      transition: opacity .18s, transform .18s, visibility 0s .18s;
+    }
+
+    #mobile-actions-fab.open #mobile-actions-menu {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+      pointer-events: auto;
+      transition: opacity .18s, transform .18s;
+    }
+
+    .mobile-action-btn {
+      height: 46px;
+      border-radius: 999px;
+      border: 1px solid var(--border2);
+      background: var(--surface);
+      color: var(--text);
+      padding: 0 16px;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: var(--sans);
+      letter-spacing: .02em;
+      cursor: pointer;
+      white-space: nowrap;
+      box-shadow: 0 8px 24px rgba(0,0,0,.45);
+    }
+
+    .mobile-action-btn:hover { border-color: var(--amber); }
+
+    #mobile-actions-trigger {
+      width: 58px;
+      height: 58px;
+      border-radius: 50%;
+      border: none;
+      background: var(--amber);
+      color: #000;
+      font-size: 30px;
+      line-height: 1;
+      font-weight: 500;
+      cursor: pointer;
+      box-shadow: 0 10px 26px rgba(0,0,0,.55);
+      transition: transform .18s, background .18s;
+    }
+
+    #mobile-actions-fab.open #mobile-actions-trigger {
+      transform: rotate(45deg);
+      background: #e08e0a;
+    }
+
+    .modal-overlay {
+      align-items: flex-end !important;
+      justify-content: stretch !important;
+      padding: 0 !important;
+      overscroll-behavior: contain;
+    }
+
+    .modal-overlay > .panel {
+      width: 100vw !important;
+      max-width: none !important;
+      height: 100dvh !important;
+      max-height: 100dvh !important;
+      border-radius: 0;
+      margin: 0;
+      overflow: auto;
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    #sec-purchase-history .data-table thead,
+    #sec-packaging-purchase-history .data-table thead,
+    #sec-offsale-history .data-table thead {
+      display: none;
+    }
+
+    .history-scroll {
+      max-height: none;
+      overflow: visible;
+    }
+
+    #pagination {
+      padding: 10px 12px !important;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      row-gap: 6px;
+    }
+
+    #purchases-tbody,
+    #packaging-purchases-tbody,
+    #offsales-tbody {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 10px 8px;
+    }
+
+    /* â”€â”€ Mobile Card Layout â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+    #purchases-tbody tr,
+    #packaging-purchases-tbody tr,
+    #offsales-tbody tr {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      background: linear-gradient(180deg, #0f131b, #0c1017);
+      border: 1px solid #2c3344;
+      border-radius: 12px;
+      padding: 0;
+      box-shadow: 0 10px 24px rgba(0,0,0,.28);
+      cursor: pointer;
+      touch-action: pan-y;
+      overflow: hidden;
+      transition: border-color .2s, transform .16s ease, opacity .16s ease;
+    }
+
+    #purchases-tbody tr:hover,
+    #packaging-purchases-tbody tr:hover,
+    #offsales-tbody tr:hover {
+      border-color: var(--amber);
+    }
+
+    #purchases-tbody tr.swipe-delete,
+    #packaging-purchases-tbody tr.swipe-delete,
+    #offsales-tbody tr.swipe-delete {
+      border-color: rgba(239,68,68,.55);
+      background: linear-gradient(90deg, rgba(239,68,68,.22), #0c1017 32%);
+    }
+
+    .mobile-card-header {
+      position: relative;
+      display: grid;
+      grid-template-columns: 56px 1fr auto;
+      gap: 12px;
+      padding: 10px 12px;
+      align-items: center;
+    }
+
+    .mobile-card-thumbnail {
+      width: 56px;
+      height: 56px;
+      border-radius: 10px;
+      object-fit: cover;
+      flex-shrink: 0;
+      background: rgba(255,255,255,.05);
+      border: 1px solid var(--border2);
+      box-shadow: 0 6px 16px rgba(0,0,0,.24);
+      user-select: none;
+      -webkit-user-drag: none;
+      touch-action: manipulation;
+    }
+
+    .mobile-card-main {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      padding-top: 0;
+    }
+
+    .mobile-card-title {
+      font-weight: 600;
+      color: #fff;
+      font-size: 14px;
+      line-height: 1.35;
+      line-clamp: 2;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .mobile-card-date {
+      font-size: 11px;
+      color: #91a0b8;
+      font-family: var(--mono);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .mobile-card-meta {
+      min-width: 84px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 4px;
+      text-align: right;
+      padding-right: 0;
+    }
+
+    .mobile-card-meta-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: flex-end;
+      gap: 6px;
+      width: 100%;
+    }
+
+    .mobile-card-amount {
+      color: var(--amber);
+      font-weight: 700;
+      font-size: 15px;
+      line-height: 1.1;
+      letter-spacing: .01em;
+    }
+
+    .mobile-card-qty,
+    .mobile-card-unit {
+      font-size: 11px;
+      color: #91a0b8;
+      font-family: var(--mono);
+      line-height: 1.2;
+    }
+
+    .mobile-card-chevron {
+      align-self: center;
+      color: #748196;
+      font-size: 18px;
+      line-height: 1;
+      margin-left: 4px;
+      transition: transform .2s ease, color .2s ease;
+    }
+
+    .mobile-badges {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .mobile-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-weight: 500;
+    }
+
+    .mobile-badge-success {
+      background: rgba(34,197,94,.15);
+      color: var(--green);
+      border: 1px solid rgba(34,197,94,.3);
+    }
+
+    .mobile-badge-error {
+      background: rgba(239,68,68,.15);
+      color: var(--red);
+      border: 1px solid rgba(239,68,68,.3);
+    }
+
+    .mobile-card-chevron {
+      transform: rotate(0deg);
+    }
+
+    #purchases-tbody tr.expanded .mobile-card-chevron,
+    #packaging-purchases-tbody tr.expanded .mobile-card-chevron,
+    #offsales-tbody tr.expanded .mobile-card-chevron {
+      transform: translateY(-50%) rotate(90deg);
+    }
+
+    /* Fallback for when td content needs to be hidden */
+    #purchases-tbody td,
+    #packaging-purchases-tbody td,
+    #offsales-tbody td {
+      display: block;
+      width: 100%;
+      padding: 0;
+      border-bottom: none;
+    }
+
+    #purchases-tbody td.empty,
+    #packaging-purchases-tbody td.empty,
+    #offsales-tbody td.empty {
+      display: flex;
+      text-align: center;
+      justify-content: center;
+      color: var(--muted);
+      padding: 14px 8px;
+    }
+
+    /* Detail View Modal */
+    .mobile-detail-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.9);
+      z-index: 500;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      padding: 0;
+      overscroll-behavior: contain;
+    }
+
+    .mobile-detail-modal.open {
+      display: flex;
+    }
+
+    .mobile-detail-panel {
+      width: 100%;
+      max-width: 100vw;
+      background: linear-gradient(180deg, #0f131b, #0c1017);
+      border-top: 1px solid #2c3344;
+      border-radius: 16px 16px 0 0;
+      padding: 20px;
+      max-height: 90vh;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .mobile-detail-hero {
+      margin: 0 0 14px;
+      border-radius: 14px;
+      overflow: hidden;
+      border: 1px solid var(--border2);
+      background: #0a0d12;
+      box-shadow: 0 10px 24px rgba(0,0,0,.32);
+    }
+
+    .mobile-detail-hero img {
+      display: block;
+      width: 100%;
+      max-height: 38vh;
+      object-fit: cover;
+      cursor: zoom-in;
+    }
+
+    .mobile-detail-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .mobile-detail-close {
+      background: none;
+      border: none;
+      color: var(--text);
+      font-size: 24px;
+      cursor: pointer;
+      padding: 4px 8px;
+      margin: -4px -8px;
+    }
+
+    .mobile-detail-close:hover {
+      color: var(--amber);
+    }
+
+    .mobile-detail-actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin: 12px 0 4px;
+      position: static;
+      padding-top: 16px;
+      border-top: 1px solid var(--border2);
+    }
+
+    .mobile-detail-spacer {
+      display: block;
+      height: 24px;
+      width: 100%;
+    }
+
+    .mobile-detail-actions .btn {
+      width: 100%;
+      min-height: 42px;
+      font-size: 12px;
+      padding: 10px 12px;
+      white-space: nowrap;
+    }
+
+    .mobile-detail-actions .btn-danger {
+      border-color: rgba(239, 68, 68, .3);
+    }
+
+    #contacts-suppliers-pane table,
+    #contacts-packaging-pane table,
+    #contacts-buyers-pane table {
+      display: none;
+    }
+
+    .mobile-contact-list {
+      display: block !important;
+      margin-bottom: 14px;
+    }
+
+    /* Mobile history tabs */
+    .mobile-history-tabs {
+      display: flex;
+      gap: 8px;
+      padding: 8px 12px 14px;
+      background: transparent;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .mobile-history-tab {
+      flex: 1 1 auto;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border2);
+      background: rgba(255,255,255,.02);
+      color: var(--muted);
+      font-weight: 700;
+      font-size: 13px;
+      text-align: center;
+      cursor: pointer;
+    }
+
+    .mobile-history-tab.active {
+      background: linear-gradient(180deg, rgba(245,158,11,.14), rgba(245,158,11,.06));
+      color: #fff;
+      border-color: rgba(245,158,11,.24);
+    }
+  }
+
+  /* â”€â”€ Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 20px; }
+  .panel-header { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .panel-title  { font-size: 13px; font-weight: 600; color: #fff; }
+  .panel-body   { padding: 18px; }
+
+  #sec-purchase-history,
+  #sec-offsale-history {
+    border-color: #2a3040;
+    box-shadow: 0 8px 24px rgba(0,0,0,.22);
+  }
+  #sec-purchase-history .panel-header,
+  #sec-offsale-history .panel-header {
+    background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,0));
+  }
+  #sec-purchase-history .panel-title,
+  #sec-offsale-history .panel-title {
+    font-size: 12px;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    color: #e7ebf5;
+  }
+
+  .history-controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .history-scroll .data-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: #10141d;
+  }
+
+  .history-scroll .data-table tbody td {
+    font-size: 12.5px;
+  }
+
+  .history-scroll .data-table tbody tr {
+    transition: background .16s ease;
+  }
+
+  .history-scroll .data-table tbody tr:nth-child(even) td {
+    background: rgba(255,255,255,.01);
+  }
+
+  /* â”€â”€ Form â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+  .form-row { margin-bottom: 14px; }
+  .form-row label { display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 5px; }
+  .form-control {
+    width: 100%; background: var(--bg); border: 1px solid var(--border2);
+    color: var(--text); border-radius: 6px; padding: 8px 10px; font-size: 13px;
+    font-family: var(--sans); outline: none; transition: border-color .15s;
+  }
+  .form-control:focus { border-color: var(--amber); }
+  select.form-control option { background: var(--surface); }
+  .form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  .platform-hint {
+    margin-top: 8px;
+    min-height: 24px;
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .plat-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    border: 1px solid var(--border2);
+    border-radius: 99px;
+    padding: 2px 8px;
+    background: rgba(255,255,255,.03);
+  }
+  .plat-chip .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+  .plat-shopee { color: var(--shopee); border-color: rgba(240,96,36,.35); }
+  .plat-shopee .dot { background: var(--shopee); }
+  .plat-shopee_sg { color: var(--shopee-sg); border-color: rgba(255,139,97,.35); }
+  .plat-shopee_sg .dot { background: var(--shopee-sg); }
+  .plat-lazada { color: var(--lazada); border-color: rgba(91,102,245,.35); }
+  .plat-lazada .dot { background: var(--lazada); }
+  .plat-tiktok { color: var(--tiktok); border-color: rgba(37,244,238,.35); }
+  .plat-tiktok .dot { background: var(--tiktok); }
+  .hint-muted { color: var(--muted); font-size: 11px; }
+
+  /* â”€â”€ Photo upload â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+  .photo-zone {
+    border: 1px dashed var(--border2); border-radius: 6px;
+    padding: 14px; text-align: center; cursor: pointer;
+    transition: border-color .15s; position: relative;
+  }
+  .photo-zone:hover { border-color: var(--amber); }
+  .photo-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .photo-zone-label { font-size: 11px; color: var(--muted); }
+  .photo-preview { max-width: 100%; max-height: 120px; border-radius: 4px; margin-top: 8px; display: none; }
+  .photo-input-hidden { display: none !important; }
+  .photo-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 10px;
+    flex-wrap: wrap;
+  }
+  .photo-remove {
+    display: none;
+    margin-top: 8px;
+    font-size: 11px;
+    padding: 4px 10px;
+  }
+
+  /* â”€â”€ Buttons â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+  .btn {
+    padding: 9px 16px; border-radius: 6px; font-size: 13px; font-weight: 500;
+    cursor: pointer; border: 1px solid var(--border2); color: var(--text);
+    background: var(--surface); transition: .15s; font-family: var(--sans);
+  }
+  .btn:hover { border-color: var(--amber); color: #fff; }
+  .btn-primary { background: var(--amber); border-color: var(--amber); color: #000; }
+  .btn-primary:hover { background: #e08e0a; border-color: #e08e0a; color: #000; }
+  .btn-danger  { border-color: var(--red); color: var(--red); }
+  .btn-danger:hover  { background: rgba(239,68,68,.1); }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+
+  /* â”€â”€ Table â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+  .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .data-table th { background: var(--bg); color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+  .data-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  .data-table tr:last-child td { border-bottom: none; }
+  .data-table tr:hover td { background: rgba(255,255,255,.02); }
+  .right { text-align: right; }
+  .history-scroll { overflow-x: auto; max-height: 460px; }
+
+  /* â”€â”€ Desktop Table Display â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+  #purchases-tbody tr,
+  #packaging-purchases-tbody tr,
+  #offsales-tbody tr {
+    display: table-row;
+    background: none;
+    border: none;
+    border-radius: 0;
+    padding: 0;
+    box-shadow: none;
+    cursor: auto;
+    transition: none;
+  }
+
+  #purchases-tbody tr:hover,
+  #packaging-purchases-tbody tr:hover,
+  #offsales-tbody tr:hover {
+    border-color: transparent;
+  }
+
+  #purchases-tbody td,
+  #packaging-purchases-tbody td,
+  #offsales-tbody td {
+    display: table-cell;
+    justify-content: space-between;
+    align-items: baseline;
+    border-bottom: 1px solid var(--border);
+    padding: 10px 12px;
+    gap: 10px;
+    font-size: 13px;
+    color: #e2e7f2;
+    word-break: break-word;
+  }
+
+  #purchases-tbody td::before,
+  #packaging-purchases-tbody td::before,
+  #offsales-tbody td::before {
+    content: '';
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    flex-shrink: 0;
+    min-width: 74px;
+    color: #8e99ae;
+    display: none;
+  }
+
+  #purchases-tbody td.cell-date,
+  #packaging-purchases-tbody td.cell-date,
+  #offsales-tbody td.cell-date {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: #a6b0c5;
+    letter-spacing: .04em;
+  }
+
+  #purchases-tbody td.cell-supplier,
+  #packaging-purchases-tbody td.cell-supplier,
+  #offsales-tbody td.cell-soldto {
+    color: #c6cfde !important;
+  }
+
+  #purchases-tbody td.cell-product,
+  #packaging-purchases-tbody td.cell-product,
+  #offsales-tbody td.cell-items {
+    display: table-cell;
+    padding-top: 10px;
+    border-top: none;
+    margin-top: 0;
+  }
+
+  #purchases-tbody td.cell-product::before,
+  #packaging-purchases-tbody td.cell-product::before,
+  #offsales-tbody td.cell-items::before {
+    display: none;
+    margin-bottom: 0;
+  }
+
+  #purchases-tbody td.cell-total,
+  #packaging-purchases-tbody td.cell-total,
+  #offsales-tbody td.cell-total {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--amber);
+  }
+
+  #purchases-tbody td.cell-actions,
+  #packaging-purchases-tbody td.cell-actions,
+  #offsales-tbody td.cell-actions {
+    margin-top: 0;
+    justify-content: flex-end;
+    border-top: none;
+    padding-top: 10px;
+  }
+
+  #purchases-tbody td.cell-actions .btn,
+  #packaging-purchases-tbody td.cell-actions .btn,
+  #offsales-tbody td.cell-actions .btn {
+    min-height: 36px;
+    padding: 6px 12px !important;
+    font-size: 12px !important;
+    border-radius: 999px;
+  }
+
+  #purchases-tbody td.cell-photos img.thumb,
+  #packaging-purchases-tbody td.cell-photos img.thumb,
+  #offsales-tbody td.cell-photo img.thumb {
+    width: 58px;
+    height: 58px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 1px solid var(--border2);
+  }
+
+  #purchases-tbody .push-chips {
+    justify-content: flex-end;
+  }
+
+  #purchases-tbody td.empty,
+  #offsales-tbody td.empty {
+    text-align: center;
+    justify-content: center;
+    color: var(--muted);
+    padding: 14px 8px;
+  }
+
+  /* â”€â”€ Badges â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 500; }
+  .badge-ok   { background: rgba(34,197,94,.15); color: var(--green); }
+  .badge-err  { background: rgba(239,68,68,.15);  color: var(--red); }
+  .badge-pend { background: rgba(245,158,11,.15); color: var(--amber); }
+
+  /* â”€â”€ Push status chips â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+  .push-chips { display: flex; gap: 4px; flex-wrap: wrap; }
+  .chip { font-size: 10px; padding: 1px 6px; border-radius: 99px; }
+  .chip-ok  { background: rgba(34,197,94,.15); color: var(--green); }
+  .chip-err { background: rgba(239,68,68,.15);  color: var(--red); }
+
+  /* â”€â”€ Notify toast â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+  #toast {
+    position: fixed; bottom: 24px; right: 24px; z-index: 999;
+    background: var(--surface); border: 1px solid var(--border2);
+    border-radius: 8px; padding: 12px 18px; font-size: 13px;
+    display: none; max-width: 340px; box-shadow: 0 8px 24px rgba(0,0,0,.5);
+  }
+  #toast.show { display: block; }
+  #toast.ok   { border-color: var(--green); color: var(--green); }
+  #toast.err  { border-color: var(--red);   color: var(--red); }
+
+  /* â”€â”€ Empty state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+  .empty { text-align: center; padding: 40px; color: var(--muted); font-size: 13px; }
+
+  /* â”€â”€ Thumb â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+  .thumb { width: 36px; height: 36px; object-fit: cover; border-radius: 4px; cursor: pointer; }
+
+  /* â”€â”€ Off-platform sales â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+  .off-lines { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+  .off-line {
+    display: grid;
+    grid-template-columns: 1.7fr .6fr .8fr .8fr auto;
+    gap: 8px;
+    align-items: center;
+  }
+  .off-line-total {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--amber);
+    white-space: nowrap;
+    text-align: right;
+    padding-right: 4px;
+  }
+  .line-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 5px;
+    border: 1px solid var(--border2);
+    background: var(--bg);
+    color: var(--text);
+    cursor: pointer;
+  }
+  .line-btn:hover { border-color: var(--amber); }
+  .line-btn.del { color: var(--red); border-color: rgba(239,68,68,.5); }
+  .mini-help { font-size: 11px; color: var(--muted); margin: 2px 0 10px; }
+
+  .supply-checklist {
+    background: var(--bg);
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    padding: 8px;
+    max-height: 180px;
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .supply-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--text);
+  }
+  .supply-row input[type=checkbox] {
+    width: 14px;
+    height: 14px;
+    accent-color: var(--amber);
+  }
+  .supply-row.group { color: #f6d18a; font-weight: 600; }
+  .supply-row.member { padding-left: 16px; color: var(--muted); }
+
+  .mobile-contact-list { display: none; }
+  .mobile-contact-card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 8px;
+    overflow: hidden;
+  }
+  .mobile-contact-card summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .mobile-contact-card summary::-webkit-details-marker { display: none; }
+  .mobile-contact-name { color: #fff; font-size: 13px; font-weight: 600; }
+  .mobile-contact-sub { color: var(--muted); font-size: 11px; }
+  .mobile-contact-body {
+    border-top: 1px solid var(--border);
+    padding: 10px 12px;
+    display: grid;
+    gap: 8px;
+  }
+  .mobile-contact-row {
+    display: grid;
+    grid-template-columns: 88px 1fr;
+    gap: 8px;
+    align-items: start;
+    font-size: 12px;
+  }
+  .mobile-contact-row b { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .06em; }
+  .mobile-contact-actions { display: flex; gap: 8px; margin-top: 4px; }
+
+  .modal-overlay {
+    overscroll-behavior: contain;
+  }
+  .modal-overlay > .panel {
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand">MANZILL <span>GLOBE</span></div>
+  <a href="/"  class="nav-link">InvSync</a>
+  <a href="/financials" class="nav-link">RevLens</a>
+  <a href="/purchases"  class="nav-link active">ProcSync</a>
+  <a href="/documents"  class="nav-link">DocFlow</a>
+  <div class="nav-right">
+    <span id="nav-status" style="font-size:11px;color:var(--muted);font-family:var(--mono);"></span>
+  </div>
+</nav>
+
+<div id="toast"></div>
+
+<!-- â”€â”€ Image lightbox â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
+<div id="lightbox" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.85);
+  align-items:center;justify-content:center;cursor:pointer;" onclick="closeLightbox()">
+  <img id="lightbox-img" style="max-width:90vw;max-height:90vh;border-radius:8px;" src="">
+</div>
+
+<!-- Generate Invoice Modal -->
+<div class="modal-overlay" id="gen-invoice-modal" onclick="if(event.target===this)closeModal('gen-invoice-modal')" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:300;align-items:center;justify-content:center;">
+  <div class="panel" style="width:min(600px,94vw);">
+    <div class="panel-header"><div class="panel-title">Generate Invoice</div><button class="btn" onclick="closeModal('gen-invoice-modal')">Close</button></div>
+    <div class="panel-body">
+      <form id="gen-invoice-form" onsubmit="submitGenerateInvoice(event)">
+        <div class="form-row"><label>Invoice Number (auto-generated)</label><input type="text" id="gen-inv-number" class="form-control" readonly placeholder="MGT YYMM/NNN"></div>
+        <div class="form-row"><label>Invoice Date *</label><input type="date" id="gen-inv-date" class="form-control" required></div>
+        <div class="form-row"><label>Due Date</label><input type="date" id="gen-inv-due" class="form-control"></div>
+        <div class="form-row"><label>Buyer Name *</label><input type="text" id="gen-inv-buyer" class="form-control" required placeholder="e.g. Ahmad Bin Ali"></div>
+        <div class="form-row"><label>Buyer Company</label><input type="text" id="gen-inv-company" class="form-control" placeholder="e.g. ABC Trading"></div>
+        <div class="form-row"><label>Remarks</label><textarea id="gen-inv-remarks" class="form-control" rows="2" placeholder="Optional notes..."></textarea></div>
+        <button type="submit" class="btn btn-primary" style="width:100%;">✓ Generate Invoice</button>
+        <div id="gen-inv-status" style="margin-top:10px;font-size:12px;min-height:18px;color:var(--muted);"></div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Invoice/Receipt Success Modal -->
+<div class="modal-overlay" id="invoice-success-modal" onclick="if(event.target===this)closeModal('invoice-success-modal')" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:300;align-items:center;justify-content:center;">
+  <div class="panel" style="width:min(500px,94vw);">
+    <div class="panel-header"><div class="panel-title">Document Created</div></div>
+    <div class="panel-body">
+      <div style="text-align:center;margin-bottom:20px;">
+        <div style="font-size:48px;color:var(--green);margin-bottom:10px;">✓</div>
+        <div style="font-size:16px;font-weight:600;margin-bottom:4px;" id="success-doc-type">Invoice</div>
+        <div style="font-size:14px;color:var(--muted);" id="success-doc-number">MGT 2603/001</div>
+      </div>
+      <div style="background:var(--bg);padding:12px;border-radius:6px;margin-bottom:16px;">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:4px;">Document Details</div>
+        <div style="display:grid;gap:8px;font-size:12px;">
+          <div style="display:grid;grid-template-columns:120px 1fr;gap:8px;">
+            <span style="color:var(--muted);">Buyer:</span>
+            <span id="success-buyer-name">—</span>
+          </div>
+          <div style="display:grid;grid-template-columns:120px 1fr;gap:8px;">
+            <span style="color:var(--muted);">Amount:</span>
+            <span style="color:var(--amber);font-weight:600;" id="success-amount">RM 0.00</span>
+          </div>
+          <div style="display:grid;grid-template-columns:120px 1fr;gap:8px;">
+            <span style="color:var(--muted);">Date:</span>
+            <span id="success-date">2026-03-27</span>
+          </div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;">
+        <button class="btn btn-primary" onclick="downloadInvoicePDF()" style="font-size:12px;">📥 Download PDF</button>
+        <button class="btn" onclick="shareInvoice()" style="font-size:12px;">🔗 Copy Link</button>
+        <button class="btn" id="btn-success-send-email-primary" onclick="sendInvoiceEmailFromSuccess(this)" style="font-size:12px;">✉️ Send Email</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr auto;gap:8px;margin-bottom:12px;align-items:center;">
+        <input id="success-recipient-email" class="form-control" type="text" placeholder="customer@email.com" />
+        <button class="btn" id="btn-success-send-email" onclick="sendInvoiceEmailFromSuccess(this)" style="font-size:12px;white-space:nowrap;">✉️ Send Email</button>
+      </div>
+      <div id="success-email-status" style="margin-top:-6px;margin-bottom:10px;font-size:12px;min-height:18px;color:var(--muted);"></div>
+      <button class="btn" onclick="closeModal('invoice-success-modal')" style="width:100%;font-size:12px;">Close</button>
+    </div>
+  </div>
+</div>
+<div class="modal-overlay" id="gen-receipt-modal" onclick="if(event.target===this)closeModal('gen-receipt-modal')" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:300;align-items:center;justify-content:center;">
+  <div class="panel" style="width:min(600px,94vw);">
+    <div class="panel-header"><div class="panel-title">Generate Receipt</div><button class="btn" onclick="closeModal('gen-receipt-modal')">Close</button></div>
+    <div class="panel-body">
+      <form id="gen-receipt-form" onsubmit="submitGenerateReceipt(event)">
+        <div class="form-row"><label>Receipt Number (auto-generated)</label><input type="text" id="gen-receipt-number" class="form-control" readonly placeholder="RCP/YYMM/NNN"></div>
+        <div class="form-row"><label>Receipt Date *</label><input type="date" id="gen-receipt-date" class="form-control" required></div>
+        <div class="form-row"><label>Buyer Name *</label><input type="text" id="gen-receipt-buyer" class="form-control" required placeholder="e.g. Ahmad Bin Ali"></div>
+        <div class="form-row"><label>Buyer Company</label><input type="text" id="gen-receipt-company" class="form-control" placeholder="e.g. ABC Trading"></div>
+        <div class="form-row"><label>Remarks</label><textarea id="gen-receipt-remarks" class="form-control" rows="2" placeholder="Optional notes..."></textarea></div>
+        <button type="submit" class="btn btn-primary" style="width:100%;">✓ Generate Receipt</button>
+        <div id="gen-receipt-status" style="margin-top:10px;font-size:12px;min-height:18px;color:var(--muted);"></div>
+      </form>
+    </div>
+  </div>
+</div>
+    <div class="page">
+      <div class="page-title">ProcSync</div>
+      <div class="page-sub">Record purchases</div>
+      <div class="workflow">Flow: 1) Pick supplier or buyer contact 2) Record purchase/sale 3) Review history 4) Maintain contacts.</div>
+    </div>
+  </div>
+
+  <div id="desktop-actions" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
+    <button class="btn btn-primary" onclick="openModal('purchase-modal')">+ Record Purchase</button>
+    <button class="btn btn-primary" onclick="openModal('packaging-purchase-modal')">+ Record Packaging Purchase</button>
+    <button class="btn btn-primary" onclick="openModal('offsale-modal')">+ Record Off-Platform Sale</button>
+    <button class="btn" onclick="openModal('contacts-modal')">Manage Contacts</button>
+  </div>
+
+  <!-- â”€â”€ Purchase history â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
+  <div class="panel" id="sec-purchase-history">
+    <div class="panel-header">
+      <div class="panel-title">Purchase History</div>
+      <div class="history-controls">
+        <select id="filter-product" class="form-control" style="width:280px;padding:6px 8px;font-size:12px;" onchange="loadPurchases()">
+          <option value="">All products</option>
+        </select>
+        <button class="btn" style="font-size:12px;padding:5px 10px;" onclick="loadPurchases()">âŸ³</button>
+      </div>
+    </div>
+    <div class="history-scroll">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Product</th>
+            <th class="right">Qty</th>
+            <th class="right">Unit RM</th>
+            <th class="right">Total RM</th>
+            <th>Supplier</th>
+            <th>Photos</th>
+            <th>Push</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="purchases-tbody">
+          <tr><td colspan="9" class="empty">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div id="pagination" style="padding:12px 18px;display:flex;gap:8px;align-items:center;border-top:1px solid var(--border);font-size:12px;color:var(--muted);">
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top:16px;" id="sec-packaging-purchase-history">
+    <div class="panel-header">
+      <div class="panel-title">Packaging Purchase History</div>
+      <div class="history-controls">
+        <button class="btn" style="font-size:12px;padding:5px 10px;" onclick="loadPackagingPurchases()">âŸ³</button>
+      </div>
+    </div>
+    <div class="history-scroll">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Supplier</th>
+            <th>Categories</th>
+            <th class="right">Qty</th>
+            <th class="right">Unit RM</th>
+            <th class="right">Total RM</th>
+            <th>Product</th>
+            <th>Photos</th>
+            <th>Notes</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="packaging-purchases-tbody">
+          <tr><td colspan="10" class="empty">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div id="packaging-pagination" style="padding:12px 18px;display:flex;gap:8px;align-items:center;border-top:1px solid var(--border);font-size:12px;color:var(--muted);"></div>
+  </div>
+
+  <div class="panel" style="margin-top:16px;" id="sec-offsale-history">
+    <div class="panel-header">
+      <div class="panel-title">Off-Platform Sales History</div>
+      <button class="btn" style="font-size:12px;padding:5px 10px;" onclick="loadOffSales()">âŸ³</button>
+    </div>
+    <div class="history-scroll">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Sold To</th>
+            <th>Items</th>
+            <th class="right">Total RM</th>
+            <th>Photo</th>
+          </tr>
+        </thead>
+        <tbody id="offsales-tbody">
+          <tr><td colspan="5" class="empty">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Purchase Modal -->
+  <div class="modal-overlay" id="purchase-modal" onclick="if(event.target===this)closeModal('purchase-modal')" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:300;align-items:center;justify-content:center;">
+    <div class="panel" style="width:min(760px,94vw);max-height:90vh;overflow:auto;">
+      <div class="panel-header"><div class="panel-title">Record Purchase</div><button class="btn" onclick="closeModal('purchase-modal')">Close</button></div>
+      <div class="panel-body">
+        <form id="purchase-form" onsubmit="submitPurchase(event)">
+          <div class="form-row">
+            <label>Product *</label>
+            <select id="f-product" class="form-control" required><option value="">— select product —</option></select>
+            <div id="f-platform-hint" class="platform-hint"></div>
+          </div>
+          <div class="form-row-2">
+            <div class="form-row"><label>Purchase Date *</label><input type="date" id="f-date" class="form-control" required></div>
+            <div class="form-row"><label>Quantity *</label><input type="number" id="f-qty" class="form-control" min="1" required placeholder="10"></div>
+          </div>
+          <div class="form-row-2">
+            <div class="form-row"><label>Unit Cost (RM) *</label><input type="number" id="f-cost" class="form-control" min="0" step="0.0001" required placeholder="22.0000"></div>
+            <div class="form-row"><label>Total Cost</label><input type="text" id="f-total" class="form-control" readonly placeholder="—" style="color:var(--amber);"></div>
+          </div>
+          <div class="form-row"><label>Supplier Contact</label><select id="f-supplier-contact" class="form-control"><option value="">-- select supplier --</option></select></div>
+          <div class="form-row">
+            <label style="text-transform:none;letter-spacing:0;font-size:12px;display:flex;align-items:center;gap:8px;">
+              <input type="checkbox" id="f-sync-stock" checked style="accent-color:var(--amber);width:16px;height:16px;">
+              Sync stock to all platforms (InvSync)
+            </label>
+          </div>
+          <div class="form-row"><label>Notes</label><textarea id="f-notes" class="form-control" rows="2" placeholder="Optional remarks..."></textarea></div>
+          <div class="form-row-2" style="margin-bottom:18px;">
+            <div class="form-row">
+              <label>📦 Photo — Goods</label>
+              <div class="photo-zone" id="zone-goods">
+                <input class="photo-input-hidden" type="file" id="f-photo-goods-cam" accept="image/*" capture="environment" onchange="previewPhoto(this,'prev-goods','zone-goods')">
+                <input class="photo-input-hidden" type="file" id="f-photo-goods-lib" accept="image/*" onchange="previewPhoto(this,'prev-goods','zone-goods')">
+                <div class="photo-zone-label">Choose source</div>
+                <div class="photo-actions">
+                  <button type="button" class="btn" style="font-size:11px;padding:6px 10px;" onclick="openPhotoChooser('goods','camera')">📷 Camera</button>
+                  <button type="button" class="btn" style="font-size:11px;padding:6px 10px;" onclick="openPhotoChooser('goods','gallery')">🖼️ Gallery</button>
+                </div>
+                <img id="prev-goods" class="photo-preview">
+                <button type="button" id="clear-goods" class="btn btn-danger photo-remove" onclick="clearPhoto('goods')">✖ Remove</button>
+              </div>
+            </div>
+            <div class="form-row">
+              <label>🧾 Photo — Receipt</label>
+              <div class="photo-zone" id="zone-receipt">
+                <input class="photo-input-hidden" type="file" id="f-photo-receipt-cam" accept="image/*" capture="environment" onchange="previewPhoto(this,'prev-receipt','zone-receipt')">
+                <input class="photo-input-hidden" type="file" id="f-photo-receipt-lib" accept="image/*" onchange="previewPhoto(this,'prev-receipt','zone-receipt')">
+                <div class="photo-zone-label">Choose source</div>
+                <div class="photo-actions">
+                  <button type="button" class="btn" style="font-size:11px;padding:6px 10px;" onclick="openPhotoChooser('receipt','camera')">📷 Camera</button>
+                  <button type="button" class="btn" style="font-size:11px;padding:6px 10px;" onclick="openPhotoChooser('receipt','gallery')">🖼️ Gallery</button>
+                </div>
+                <img id="prev-receipt" class="photo-preview">
+                <button type="button" id="clear-receipt" class="btn btn-danger photo-remove" onclick="clearPhoto('receipt')">✖ Remove</button>
+              </div>
+            </div>
+          </div>
+          <button type="submit" id="submit-btn" class="btn btn-primary" style="width:100%;">💾 Save &amp; Push Stock to Platforms</button>
+          <div id="form-status" style="margin-top:10px;font-size:12px;min-height:18px;"></div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Packaging Purchase Modal -->
+  <div class="modal-overlay" id="packaging-purchase-modal" onclick="if(event.target===this)closeModal('packaging-purchase-modal')" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:300;align-items:center;justify-content:center;">
+    <div class="panel" style="width:min(860px,96vw);max-height:90vh;overflow:auto;">
+      <div class="panel-header"><div class="panel-title">Record Packaging Purchase</div><button class="btn" onclick="closeModal('packaging-purchase-modal')">Close</button></div>
+      <div class="panel-body">
+        <form id="packaging-purchase-form" onsubmit="submitPackagingPurchase(event)">
+          <div class="form-row">
+            <label>Packaging Supplier *</label>
+            <select id="f-packaging-supplier" class="form-control" required>
+              <option value="">-- select packaging supplier --</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label>Categories *</label>
+            <div id="f-packaging-categories" class="supply-checklist"></div>
+            <div id="f-packaging-category-hint" class="mini-help">Select a supplier to load its categories.</div>
+          </div>
+          <div class="form-row-2">
+            <div class="form-row"><label>Purchase Date *</label><input type="date" id="f-packaging-date" class="form-control" required></div>
+            <div class="form-row"><label>Quantity *</label><input type="number" id="f-packaging-qty" class="form-control" min="1" required placeholder="10"></div>
+          </div>
+          <div class="form-row-2">
+            <div class="form-row"><label>Unit Cost (RM) *</label><input type="number" id="f-packaging-cost" class="form-control" min="0" step="0.0001" required placeholder="2.5000"></div>
+            <div class="form-row"><label>Total Cost</label><input type="text" id="f-packaging-total" class="form-control" readonly placeholder="—" style="color:var(--amber);"></div>
+          </div>
+          <div class="form-row"><label>Product Name</label><input type="text" id="f-packaging-product-name" class="form-control" placeholder="Optional"></div>
+          <div class="form-row"><label>Notes</label><textarea id="f-packaging-notes" class="form-control" rows="2" placeholder="Optional remarks..."></textarea></div>
+          <div class="form-row-2" style="margin-bottom:18px;">
+            <div class="form-row">
+              <label>📦 Photo — Item</label>
+              <div class="photo-zone" id="zone-pack-item">
+                <input class="photo-input-hidden" type="file" id="f-photo-pack-item-cam" accept="image/*" capture="environment" onchange="previewPhoto(this,'prev-pack-item','zone-pack-item')">
+                <input class="photo-input-hidden" type="file" id="f-photo-pack-item-lib" accept="image/*" onchange="previewPhoto(this,'prev-pack-item','zone-pack-item')">
+                <div class="photo-zone-label">Choose source</div>
+                <div class="photo-actions">
+                  <button type="button" class="btn" style="font-size:11px;padding:6px 10px;" onclick="openPhotoChooser('pack-item','camera')">📷 Camera</button>
+                  <button type="button" class="btn" style="font-size:11px;padding:6px 10px;" onclick="openPhotoChooser('pack-item','gallery')">🖼️ Gallery</button>
+                </div>
+                <img id="prev-pack-item" class="photo-preview">
+                <button type="button" id="clear-pack-item" class="btn btn-danger photo-remove" onclick="clearPhoto('pack-item')">✖ Remove</button>
+              </div>
+            </div>
+            <div class="form-row">
+              <label>🧾 Photo — Receipt / Invoice</label>
+              <div class="photo-zone" id="zone-pack-receipt">
+                <input class="photo-input-hidden" type="file" id="f-photo-pack-receipt-cam" accept="image/*" capture="environment" onchange="previewPhoto(this,'prev-pack-receipt','zone-pack-receipt')">
+                <input class="photo-input-hidden" type="file" id="f-photo-pack-receipt-lib" accept="image/*" onchange="previewPhoto(this,'prev-pack-receipt','zone-pack-receipt')">
+                <div class="photo-zone-label">Choose source</div>
+                <div class="photo-actions">
+                  <button type="button" class="btn" style="font-size:11px;padding:6px 10px;" onclick="openPhotoChooser('pack-receipt','camera')">📷 Camera</button>
+                  <button type="button" class="btn" style="font-size:11px;padding:6px 10px;" onclick="openPhotoChooser('pack-receipt','gallery')">🖼️ Gallery</button>
+                </div>
+                <img id="prev-pack-receipt" class="photo-preview">
+                <button type="button" id="clear-pack-receipt" class="btn btn-danger photo-remove" onclick="clearPhoto('pack-receipt')">✖ Remove</button>
+              </div>
+            </div>
+          </div>
+          <button type="submit" id="packaging-submit-btn" class="btn btn-primary" style="width:100%;">💾 Save Packaging Purchase</button>
+          <div id="packaging-form-status" style="margin-top:10px;font-size:12px;min-height:18px;"></div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Off-sale Modal -->
+  <div class="modal-overlay" id="offsale-modal" onclick="if(event.target===this)closeModal('offsale-modal')" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:300;align-items:center;justify-content:center;">
+    <div class="panel" style="width:min(900px,96vw);max-height:90vh;overflow:auto;">
+      <div class="panel-header"><div class="panel-title">Record Off-Platform Sale</div><button class="btn" onclick="closeModal('offsale-modal')">Close</button></div>
+      <div class="panel-body">
+        <form id="offsale-form" onsubmit="submitOffSale(event)">
+          <div class="form-row-2">
+            <div class="form-row"><label>Sale Date *</label><input type="date" id="off-date" class="form-control" required></div>
+            <div class="form-row"><label>Buyer Contact *</label><select id="off-buyer-contact" class="form-control" required><option value="">-- select buyer --</option></select></div>
+          </div>
+          <div class="form-row"><label>Products Sold *</label><div class="mini-help">Add one line per product/group. Multi-select is supported by adding multiple lines.</div><div id="off-lines" class="off-lines"></div><button type="button" class="btn" style="width:100%;" onclick="addOffSaleLine()">+ Add Product Line</button></div>
+          <div class="form-row-2">
+            <div class="form-row"><label>Total Amount (RM)</label><input type="number" id="off-total" class="form-control" min="0" step="0.01" placeholder="0.00"></div>
+            <div class="form-row"><label>Photo (optional)</label><div class="photo-zone" id="zone-offsale"><input type="file" id="off-photo" accept="image/*" onchange="previewPhoto(this,'prev-offsale','zone-offsale')"><div class="photo-zone-label">Tap to attach</div><img id="prev-offsale" class="photo-preview"></div></div>
+          </div>
+          <div class="form-row"><label>Notes</label><textarea id="off-notes" class="form-control" rows="2" placeholder="Optional remarks..."></textarea></div>
+          <div class="form-row">
+            <label style="text-transform:none;letter-spacing:0;font-size:12px;display:flex;align-items:center;gap:8px;">
+              <input type="checkbox" id="off-sync-stock" checked style="accent-color:var(--amber);width:16px;height:16px;">
+              Sync stock to all platforms (InvSync)
+            </label>
+          </div>
+          <button type="submit" id="off-submit-btn" class="btn btn-primary" style="width:100%;">💾 Save Off-Platform Sale</button>
+          <div id="off-form-status" style="margin-top:10px;font-size:12px;min-height:18px;"></div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Contacts Modal -->
+  <div class="modal-overlay" id="contacts-modal" onclick="if(event.target===this)closeModal('contacts-modal')" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:300;align-items:center;justify-content:center;">
+    <div class="panel" style="width:min(1100px,97vw);max-height:92vh;overflow:auto;">
+      <div class="panel-header"><div class="panel-title">Contacts</div><button class="btn" onclick="closeModal('contacts-modal')">Close</button></div>
+      <div class="panel-body">
+        <div style="display:flex;gap:8px;margin-bottom:12px;">
+          <button class="btn" id="tab-suppliers" onclick="switchContactTab('suppliers')">Suppliers</button>
+          <button class="btn" id="tab-packaging" onclick="switchContactTab('packaging')">Packaging Suppliers</button>
+          <button class="btn" id="tab-buyers" onclick="switchContactTab('buyers')">Off-Platform Buyers</button>
+        </div>
+
+        <div id="contacts-suppliers-pane">
+          <div style="overflow-x:auto;margin-bottom:14px;">
+            <table class="data-table">
+              <thead><tr><th>Name</th><th>Company</th><th>Phone</th><th>Address</th><th>Supplied</th><th></th></tr></thead>
+              <tbody id="suppliers-tbody"><tr><td colspan="6" class="empty">No suppliers yet.</td></tr></tbody>
+            </table>
+          </div>
+          <div id="suppliers-mobile-list" class="mobile-contact-list"></div>
+
+          <input type="hidden" id="c-s-id">
+          <div class="form-row-2">
+            <div>
+              <div class="form-row"><label>Supplier Name *</label><input id="c-s-name" class="form-control" placeholder="Name"></div>
+              <div class="form-row"><label>Company</label><input id="c-s-company" class="form-control" placeholder="Optional"></div>
+            </div>
+            <div>
+              <div class="form-row"><label>Phone *</label><div class="form-row-2"><select id="c-s-code" class="form-control"><option value="+60">+60 (MY)</option><option value="+65">+65 (SG)</option><option value="+62">+62 (ID)</option><option value="+66">+66 (TH)</option><option value="+91">+91 (IN)</option><option value="+971">+971 (AE)</option></select><input id="c-s-phone" class="form-control" placeholder="Phone number"></div></div>
+              <div class="form-row"><label>Address</label><textarea id="c-s-address" class="form-control" rows="2" placeholder="Optional"></textarea></div>
+            </div>
+          </div>
+          <div class="form-row">
+            <label>Products / Groups Supplied (multi-select)</label>
+            <div id="c-s-products" class="supply-checklist"></div>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-primary" style="flex:1;" onclick="saveSupplierContact()">Save Supplier</button>
+            <button class="btn" style="flex:1;" onclick="resetSupplierForm()">Clear</button>
+          </div>
+        </div>
+
+        <div id="contacts-packaging-pane" style="display:none;">
+          <div style="overflow-x:auto;margin-bottom:14px;">
+            <table class="data-table">
+              <thead><tr><th>Name</th><th>Company</th><th>Phone</th><th>Address</th><th>Categories</th><th></th></tr></thead>
+              <tbody id="packaging-suppliers-tbody"><tr><td colspan="6" class="empty">No packaging suppliers yet.</td></tr></tbody>
+            </table>
+          </div>
+          <div id="packaging-suppliers-mobile-list" class="mobile-contact-list"></div>
+
+          <input type="hidden" id="c-p-id">
+          <div class="form-row-2">
+            <div>
+              <div class="form-row"><label>Packaging Supplier Name *</label><input id="c-p-name" class="form-control" placeholder="Name"></div>
+              <div class="form-row"><label>Company</label><input id="c-p-company" class="form-control" placeholder="Optional"></div>
+            </div>
+            <div>
+              <div class="form-row"><label>Phone *</label><div class="form-row-2"><select id="c-p-code" class="form-control"><option value="+60">+60 (MY)</option><option value="+65">+65 (SG)</option><option value="+62">+62 (ID)</option><option value="+66">+66 (TH)</option><option value="+91">+91 (IN)</option><option value="+971">+971 (AE)</option></select><input id="c-p-phone" class="form-control" placeholder="Phone number"></div></div>
+              <div class="form-row"><label>Address</label><textarea id="c-p-address" class="form-control" rows="2" placeholder="Optional"></textarea></div>
+            </div>
+          </div>
+          <div class="form-row">
+            <label>Categories (multi-select)</label>
+            <div style="display:flex;gap:8px;margin-bottom:8px;">
+              <input id="c-p-category-new" class="form-control" placeholder="Add new category">
+              <button class="btn" type="button" onclick="addPackagingCategoryFromInput()">Add</button>
+            </div>
+            <div id="c-p-categories" class="supply-checklist"></div>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-primary" style="flex:1;" type="button" onclick="savePackagingSupplierContact()">Save Packaging Supplier</button>
+            <button class="btn" style="flex:1;" type="button" onclick="resetPackagingSupplierForm()">Clear</button>
+          </div>
+        </div>
+
+        <div id="contacts-buyers-pane" style="display:none;">
+          <div style="overflow-x:auto;margin-bottom:14px;">
+            <table class="data-table">
+              <thead><tr><th>Name</th><th>Company</th><th>Phone</th><th>Address</th><th>Most Frequent Product</th><th></th></tr></thead>
+              <tbody id="buyers-tbody"><tr><td colspan="6" class="empty">No buyers yet.</td></tr></tbody>
+            </table>
+          </div>
+          <div id="buyers-mobile-list" class="mobile-contact-list"></div>
+
+          <input type="hidden" id="c-b-id">
+          <div class="form-row-2">
+            <div>
+              <div class="form-row"><label>Buyer Name *</label><input id="c-b-name" class="form-control" placeholder="Name"></div>
+              <div class="form-row"><label>Company</label><input id="c-b-company" class="form-control" placeholder="Optional"></div>
+            </div>
+            <div>
+              <div class="form-row"><label>Phone *</label><div class="form-row-2"><select id="c-b-code" class="form-control"><option value="+60">+60 (MY)</option><option value="+65">+65 (SG)</option><option value="+62">+62 (ID)</option><option value="+66">+66 (TH)</option><option value="+91">+91 (IN)</option><option value="+971">+971 (AE)</option></select><input id="c-b-phone" class="form-control" placeholder="Phone number"></div></div>
+              <div class="form-row"><label>Address</label><textarea id="c-b-address" class="form-control" rows="2" placeholder="Optional"></textarea></div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-primary" style="flex:1;" onclick="saveBuyerContact()">Save Buyer</button>
+            <button class="btn" style="flex:1;" onclick="resetBuyerForm()">Clear</button>
+          </div>
+          <div id="buyer-freq" class="mini-help" style="margin-top:12px;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="mobile-actions-fab" aria-label="Quick actions">
+    <div id="mobile-actions-menu">
+      <button class="mobile-action-btn" type="button" onclick="openModal('purchase-modal')">+ Record Purchase</button>
+      <button class="mobile-action-btn" type="button" onclick="openModal('packaging-purchase-modal')">+ Record Packaging Purchase</button>
+      <button class="mobile-action-btn" type="button" onclick="openModal('offsale-modal')">+ Record Off-Platform Sale</button>
+      <button class="mobile-action-btn" type="button" onclick="openModal('contacts-modal')">Manage Contacts</button>
+    </div>
+    <button id="mobile-actions-trigger" type="button" onclick="toggleActionFab()" aria-label="Open quick actions">+</button>
+  </div>
+
+<script>
+
+const API = window.location.origin;
+let _products = [];   // [{id, name, master_stock}]
+let _groups   = [];   // [{id, display_name, master_stock, members: []}]
+let _supplierContacts = [];
+let _buyerContacts = [];
+let _packagingSuppliers = [];
+let _offSales = [];
+let _offset   = 0;
+const PAGE    = 50;
+let _packagingOffset = 0;
+const PACKAGING_PAGE = 25;
+let _packagingCategoryList = [];
+
+// â”€â”€ Init â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+window.addEventListener('DOMContentLoaded', async function init() {
+  // Set today as default purchase date
+  const today = new Date().toISOString().slice(0, 10);
+  document.getElementById('f-date').value = today;
+  document.getElementById('off-date').value = today;
+
+  // Load products and groups for selector rendering
+  try {
+    const [productsRes, groupsRes] = await Promise.all([
+      fetch(`${API}/api/products`),
+      fetch(`${API}/api/groups`),
+    ]);
+    const productsData = await productsRes.json();
+    const groupsData   = await groupsRes.json();
+
+    _products = (productsData.products || productsData || []).sort((a, b) =>
+      String(a.name || '').localeCompare(String(b.name || ''))
+    );
+    _groups = (groupsData.groups || groupsData || []).sort((a, b) =>
+      String(a.display_name || '').localeCompare(String(b.display_name || ''))
+    );
+  } catch(e) {
+    console.error('Failed to load products/groups', e);
+  }
+
+  try {
+    await loadContacts();
+  } catch(e) {
+    console.error('Failed to load contacts', e);
+  }
+
+  try {
+    await loadPackagingContacts();
+  } catch(e) {
+    console.error('Failed to load packaging contacts', e);
+  }
+
+  populateProductSelects();
+  renderSelectedPlatformHint('');
+  _applyProductSupplierLinkage('supplier');
+  // Some functions are defined later in this script; if they're not yet available,
+  // retry shortly to avoid ReferenceError during init.
+  function _deferredCall(fnName) {
+    if (typeof window[fnName] === 'function') return window[fnName]();
+    setTimeout(() => { try { if (typeof window[fnName] === 'function') window[fnName](); else _deferredCall(fnName); } catch (e) { _deferredCall(fnName); } }, 50);
+  }
+  _deferredCall('initOffSaleForm');
+  _deferredCall('initPackagingPurchaseForm');
+
+  loadPurchases();
+  loadPackagingPurchases();
+  loadOffSales();
+  initMobileHistoryTabs();
+});
+
+let _lastMobileMode = window.matchMedia('(max-width: 768px)').matches;
+window.addEventListener('resize', () => {
+  const nowMobile = window.matchMedia('(max-width: 768px)').matches;
+  if (nowMobile === _lastMobileMode) return;
+  _lastMobileMode = nowMobile;
+  populateProductSelects();
+  renderSelectedPlatformHint(document.getElementById('f-product')?.value || '');
+});
+
+function platformLabel(platform) {
+  if (platform === 'shopee') return 'Shopee MY';
+  if (platform === 'shopee_sg') return 'Shopee SG';
+  if (platform === 'lazada') return 'Lazada';
+  if (platform === 'tiktok') return 'TikTok';
+  return platform || 'Unknown';
+}
+
+function platformCode(platform) {
+  if (platform === 'shopee') return 'SH';
+  if (platform === 'shopee_sg') return 'SG';
+  if (platform === 'lazada') return 'LZ';
+  if (platform === 'tiktok') return 'TK';
+  return (platform || '?').toUpperCase();
+}
+
+function collectGroupPlatforms(group) {
+  const set = new Set();
+  (group.members || []).forEach(m => {
+    (m.listings || []).forEach(l => set.add(l.platform));
+  });
+  return Array.from(set).sort();
+}
+
+function platformDetails(listings, withSku = false) {
+  if (!Array.isArray(listings) || listings.length === 0) return 'no platforms';
+  const ordered = [...listings].sort((a, b) => String(a.platform || '').localeCompare(String(b.platform || '')));
+  return ordered.map(l => {
+    const label = platformLabel(l.platform);
+    if (withSku) {
+      const sku = l.platform_sku ? String(l.platform_sku) : 'n/a';
+      return `${label} sku:${sku}`;
+    }
+    return label;
+  }).join(' | ');
+}
+
+// Mobile history tabs: show one panel at a time on small screens
+function initMobileHistoryTabs() {
+  try {
+    const tabsHtml = `
+      <div class="mobile-history-tabs" role="tablist">
+        <button class="mobile-history-tab active" data-tab="purchase" onclick="switchHistoryTab('purchase')">Purchases</button>
+        <button class="mobile-history-tab" data-tab="offsale" onclick="switchHistoryTab('offsale')">Off-Sales</button>
+        <button class="mobile-history-tab" data-tab="packaging" onclick="switchHistoryTab('packaging')">Packaging</button>
+      </div>`;
+    const page = document.querySelector('.page');
+    if (page) page.insertAdjacentHTML('afterend', tabsHtml);
+
+    // default view
+    switchHistoryTab('purchase');
+  } catch (e) { console.error('initMobileHistoryTabs', e); }
+}
+
+function switchHistoryTab(name) {
+  const purchase = document.getElementById('sec-purchase-history');
+  const packaging = document.getElementById('sec-packaging-purchase-history');
+  const offsale = document.getElementById('sec-offsale-history');
+  if (!purchase || !packaging || !offsale) return;
+
+  // hide all by default on small screens
+  const isMobile = window.matchMedia('(max-width:860px)').matches;
+  if (!isMobile) {
+    purchase.style.display = '';
+    packaging.style.display = '';
+    offsale.style.display = '';
+    const tabs = document.querySelectorAll('.mobile-history-tab');
+    tabs.forEach(t => t.classList.remove('active'));
+    return;
+  }
+
+  purchase.style.display = (name === 'purchase') ? '' : 'none';
+  packaging.style.display = (name === 'packaging') ? '' : 'none';
+  offsale.style.display = (name === 'offsale') ? '' : 'none';
+
+  const tabs = document.querySelectorAll('.mobile-history-tab');
+  tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+}
+
+function _cardSwipeState(row) {
+  return row && row._swipeState ? row._swipeState : null;
+}
+
+function _setCardSwipeState(row, state) {
+  if (!row) return;
+  row._swipeState = state;
+}
+
+function _resetCardSwipeVisual(row) {
+  if (!row) return;
+  row.classList.remove('swipe-delete');
+  row.style.transform = '';
+  row.style.opacity = '';
+}
+
+function _extractMobileCardDetailData(row) {
+  if (!row) return {};
+  return {
+    type: row.dataset.recordType || '',
+    id: Number(row.dataset.recordId || 0),
+    productName: row.dataset.productName || '',
+    date: row.dataset.recordDate || '',
+    qty: Number(row.dataset.qty || 0),
+    unitCost: Number(row.dataset.unitCost || 0),
+    totalCost: Number(row.dataset.totalCost || 0),
+    supplierName: row.dataset.supplierName || '',
+    categories: row.dataset.categories || '',
+    soldTo: row.dataset.soldTo || '',
+    itemsText: row.dataset.itemsText || '',
+    photoSrc: row.dataset.photoSrc || '',
+    notes: row.dataset.notes || '',
+  };
+}
+
+function handleMobileCardTap(event, row) {
+  if (!row || row.dataset.suppressTap === '1') {
+    if (row) row.dataset.suppressTap = '0';
+    return;
+  }
+  if (_cardSwipeState(row)?.active) return;
+  const detail = _extractMobileCardDetailData(row);
+  if (detail.type === 'purchase') {
+    viewPurchaseDetail(event, detail.id, detail.productName, detail.date, detail.qty, detail.unitCost, detail.totalCost, detail.supplierName, detail.photoSrc);
+    return;
+  }
+  if (detail.type === 'packaging') {
+    viewPackagingDetail(event, detail.id, detail.productName, detail.date, detail.qty, detail.unitCost, detail.totalCost, detail.supplierName, detail.categories, detail.photoSrc);
+    return;
+  }
+  if (detail.type === 'offsale') {
+    viewOffSaleDetail(event, detail.id, detail.soldTo, detail.date, detail.totalCost, detail.photoSrc, detail.itemsText);
+  }
+}
+
+function confirmMobileCardDelete(row) {
+  if (!row) return;
+  const detail = _extractMobileCardDetailData(row);
+  const label = detail.type === 'purchase'
+    ? `purchase "${detail.productName}"`
+    : detail.type === 'packaging'
+      ? `packaging purchase "${detail.productName}"`
+      : `off-platform sale to "${detail.soldTo || '—'}"`;
+  if (!confirm(`Delete this ${label}?`)) {
+    _resetCardSwipeVisual(row);
+    return;
+  }
+  if (detail.type === 'purchase') {
+    deletePurchase(detail.id);
+  } else if (detail.type === 'packaging') {
+    deletePackagingPurchase(detail.id);
+  } else if (detail.type === 'offsale') {
+    deleteOffSale(detail.id);
+  }
+}
+
+function bindMobileCardInteractions(tbodyId) {
+  const tbody = document.getElementById(tbodyId);
+  if (!tbody) return;
+  const rows = Array.from(tbody.querySelectorAll('tr[data-record-id]'));
+  rows.forEach(row => {
+    _setCardSwipeState(row, { active: false, startX: 0, startY: 0, lastX: 0, lastY: 0, touching: false });
+
+    row.addEventListener('click', (event) => handleMobileCardTap(event, row));
+
+    row.addEventListener('touchstart', (event) => {
+      const touch = event.touches && event.touches[0];
+      if (!touch) return;
+      const state = _cardSwipeState(row);
+      state.active = true;
+      state.touching = true;
+      state.startX = touch.clientX;
+      state.startY = touch.clientY;
+      state.lastX = touch.clientX;
+      state.lastY = touch.clientY;
+      row.dataset.suppressTap = '0';
+    }, { passive: true });
+
+    row.addEventListener('touchmove', (event) => {
+      const state = _cardSwipeState(row);
+      if (!state?.touching) return;
+      const touch = event.touches && event.touches[0];
+      if (!touch) return;
+      const dx = touch.clientX - state.startX;
+      const dy = touch.clientY - state.startY;
+      state.lastX = touch.clientX;
+      state.lastY = touch.clientY;
+      if (Math.abs(dx) > 16 && Math.abs(dx) > Math.abs(dy)) {
+        event.preventDefault();
+        if (dx > 0) {
+          row.classList.add('swipe-delete');
+          row.style.transform = `translateX(${Math.min(dx, 84)}px)`;
+          row.style.opacity = String(Math.max(0.55, 1 - dx / 220));
+          row.dataset.suppressTap = '1';
+        }
+      }
+    }, { passive: false });
+
+    row.addEventListener('touchend', () => {
+      const state = _cardSwipeState(row);
+      if (!state?.touching) return;
+      const dx = state.lastX - state.startX;
+      state.touching = false;
+      state.active = false;
+      if (dx > 72) {
+        row.dataset.suppressTap = '1';
+        row.style.transform = 'translateX(72px)';
+        row.style.opacity = '0.55';
+        confirmMobileCardDelete(row);
+        setTimeout(() => _resetCardSwipeVisual(row), 220);
+      } else {
+        _resetCardSwipeVisual(row);
+      }
+    });
+
+    row.addEventListener('touchcancel', () => {
+      const state = _cardSwipeState(row);
+      if (state) state.touching = false;
+      _resetCardSwipeVisual(row);
+    });
+
+    const thumb = row.querySelector('.mobile-card-thumbnail');
+    if (thumb && thumb.getAttribute('src')) {
+      let pressTimer = null;
+      const startPress = () => {
+        clearTimeout(pressTimer);
+        pressTimer = setTimeout(() => {
+          row.dataset.suppressTap = '1';
+          openLightbox(thumb.getAttribute('src'));
+        }, 520);
+      };
+      const clearPress = () => {
+        clearTimeout(pressTimer);
+        pressTimer = null;
+      };
+      thumb.addEventListener('touchstart', startPress, { passive: true });
+      thumb.addEventListener('touchend', clearPress);
+      thumb.addEventListener('touchcancel', clearPress);
+      thumb.addEventListener('contextmenu', (event) => {
+        event.preventDefault();
+        openLightbox(thumb.getAttribute('src'));
+      });
+    }
+  });
+}
+
+function addDisabledOption(selectEl, text) {
+  const opt = new Option(text, '');
+  opt.disabled = true;
+  selectEl.add(opt);
+}
+
+function _filteredProducts(allowedProductIds = null) {
+  if (!allowedProductIds || !allowedProductIds.size) return _products || [];
+  return (_products || []).filter(p => allowedProductIds.has(Number(p.id)));
+}
+
+function isMobileView() {
+  return window.matchMedia('(max-width: 768px)').matches;
+}
+
+function _buildGroupedOptions(selectEl, products, includeGroupRows = true, includeMemberRows = true, includeUngroupedRows = true) {
+  const groupedProductIds = new Set();
+  (_groups || []).forEach(g => {
+    (g.members || []).forEach(m => groupedProductIds.add(Number(m.id)));
+  });
+
+  const productIdSet = new Set(products.map(p => Number(p.id)));
+
+  if ((_groups || []).length && includeGroupRows) {
+    addDisabledOption(selectEl, '--- Groups ---');
+  }
+
+  (_groups || []).forEach(g => {
+    const groupMembers = (g.members || []).filter(m => productIdSet.has(Number(m.id)));
+    if (!groupMembers.length) return;
+
+    const gStock = g.master_stock ?? '?';
+    const gPlatforms = collectGroupPlatforms(g).map(platformCode).join('|') || 'NA';
+    if (includeGroupRows) {
+      selectEl.add(new Option(`[Group] ${g.display_name} (stock:${gStock}) [${gPlatforms}]`, `g:${g.id}`));
+    }
+
+    if (includeMemberRows) {
+      const members = [...groupMembers].sort((a, b) =>
+        String(a.name || '').localeCompare(String(b.name || ''))
+      );
+      members.forEach(m => {
+        const codes = (m.listings || []).map(l => platformCode(l.platform)).join('|') || 'NA';
+        const details = platformDetails(m.listings, true);
+        selectEl.add(new Option(`  - ${m.name} [${codes}] (${details})`, String(m.id)));
+      });
+    }
+  });
+
+  if (includeUngroupedRows) {
+    const ungrouped = products.filter(p => !groupedProductIds.has(Number(p.id)));
+    if (ungrouped.length) {
+      addDisabledOption(selectEl, '--- Ungrouped Products ---');
+    }
+
+    ungrouped.forEach(p => {
+      const stock = p.master_stock ?? '?';
+      const codes = (p.listings || []).map(l => platformCode(l.platform)).join('|') || 'NA';
+      const details = platformDetails(p.listings, true);
+      selectEl.add(new Option(`${p.name} (stock:${stock}) [${codes}] [${details}]`, String(p.id)));
+    });
+  }
+}
+
+function populateProductSelects() {
+  const sel  = document.getElementById('f-product');
+  const fsel = document.getElementById('filter-product');
+
+  // Supplier-filtered list for record purchase form.
+  const supplierId = Number(document.getElementById('f-supplier-contact')?.value || 0);
+  const supplier = (_supplierContacts || []).find(s => Number(s.id) === supplierId);
+  const allowedSet = supplier && Array.isArray(supplier.supplied_product_ids) && supplier.supplied_product_ids.length
+    ? new Set(supplier.supplied_product_ids.map(Number))
+    : null;
+  const productsForPurchase = _filteredProducts(allowedSet);
+
+  sel.innerHTML  = '';
+  fsel.innerHTML = '';
+  sel.add(new Option('-- select product --', ''));
+  fsel.add(new Option('All products', ''));
+
+  if (isMobileView()) {
+    // Mobile purchase flow: show group choices only.
+    _buildGroupedOptions(sel, productsForPurchase, true, false, false);
+  } else {
+    _buildGroupedOptions(sel, productsForPurchase, true, true, true);
+  }
+
+  // Full list for history filter (not supplier narrowed)
+  const groupedProductIds = new Set();
+  (_groups || []).forEach(g => {
+    (g.members || []).forEach(m => groupedProductIds.add(Number(m.id)));
+    fsel.add(new Option(`[Group] ${g.display_name}`, `g:${g.id}`));
+    const members = [...(g.members || [])].sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+    members.forEach(m => fsel.add(new Option(`${g.display_name} > ${m.name}`, String(m.id))));
+  });
+  const ungrouped = (_products || []).filter(p => !groupedProductIds.has(Number(p.id)));
+  if (ungrouped.length) addDisabledOption(fsel, '--- Ungrouped Products ---');
+  ungrouped.forEach(p => {
+    const details = platformDetails(p.listings, true);
+    fsel.add(new Option(`${p.name} [${details}]`, String(p.id)));
+  });
+}
+
+function renderSelectedPlatformHint(selectedValue) {
+  const hint = document.getElementById('f-platform-hint');
+  if (!selectedValue) {
+    hint.innerHTML = '<span class="hint-muted">Platform colour code appears here after selection.</span>';
+    return;
+  }
+
+  let platforms = [];
+  if (String(selectedValue).startsWith('g:')) {
+    const gid = Number(String(selectedValue).slice(2));
+    const g = (_groups || []).find(x => Number(x.id) === gid);
+    if (g) platforms = collectGroupPlatforms(g);
+  } else {
+    const pid = Number(selectedValue);
+    const p = (_products || []).find(x => Number(x.id) === pid);
+    if (p) platforms = Array.from(new Set((p.listings || []).map(l => l.platform))).sort();
+  }
+
+  if (!platforms.length) {
+    hint.innerHTML = '<span class="hint-muted">No linked platforms.</span>';
+    return;
+  }
+
+  hint.innerHTML = platforms
+    .map(p => `<span class="plat-chip plat-${p}"><span class="dot"></span>${platformLabel(p)}</span>`)
+    .join('');
+}
+
+function _productSelectionToIds(selectedValue) {
+  const sv = String(selectedValue || '');
+  if (!sv) return [];
+  if (sv.startsWith('g:')) {
+    const gid = Number(sv.slice(2));
+    const g = (_groups || []).find(x => Number(x.id) === gid);
+    return (g?.members || []).map(m => Number(m.id));
+  }
+  const pid = Number(sv);
+  return Number.isNaN(pid) ? [] : [pid];
+}
+
+function _supplierCanSupplySelection(supplier, selectedValue) {
+  const targetIds = _productSelectionToIds(selectedValue);
+  if (!targetIds.length) return true;
+  const supplied = new Set((supplier?.supplied_product_ids || []).map(Number));
+  // For group selections, require supplier mapping to cover all member products.
+  return targetIds.every(pid => supplied.has(pid));
+}
+
+function _setSupplierOptions(filteredSuppliers, preferredValue = '', showCounts = false) {
+  const supplierSel = document.getElementById('f-supplier-contact');
+  if (!supplierSel) return;
+  const cur = String(preferredValue || supplierSel.value || '');
+  supplierSel.innerHTML = '<option value="">-- select supplier --</option>';
+  (filteredSuppliers || []).forEach(s => {
+    const base = s.company_name ? `${s.name} (${s.company_name})` : s.name;
+    const count = Array.isArray(s.supplied_product_ids) ? s.supplied_product_ids.length : 0;
+    const suffix = showCounts ? ` (${count} ${count === 1 ? 'product' : 'products'})` : '';
+    const label = `${base}${suffix}`;
+    supplierSel.add(new Option(label, String(s.id)));
+  });
+  if (cur && Array.from(supplierSel.options).some(o => o.value === cur)) {
+    supplierSel.value = cur;
+  }
+}
+
+function _singleSelectableProductValue() {
+  const sel = document.getElementById('f-product');
+  if (!sel) return '';
+  const vals = Array.from(sel.options)
+    .filter(o => !o.disabled && String(o.value || '').trim() !== '')
+    .map(o => String(o.value));
+  return vals.length === 1 ? vals[0] : '';
+}
+
+function _applyProductSupplierLinkage(source) {
+  const productSel = document.getElementById('f-product');
+  const supplierSel = document.getElementById('f-supplier-contact');
+  if (!productSel || !supplierSel) return;
+
+  const prevProduct = String(productSel.value || '');
+  const prevSupplier = String(supplierSel.value || '');
+
+  if (source === 'product') {
+    const filteredSuppliers = (_supplierContacts || []).filter(s => _supplierCanSupplySelection(s, prevProduct));
+    _setSupplierOptions(filteredSuppliers, prevSupplier, true);
+    if (filteredSuppliers.length === 1) {
+      supplierSel.value = String(filteredSuppliers[0].id);
+    }
+
+    populateProductSelects();
+    if (prevProduct && Array.from(productSel.options).some(o => o.value === prevProduct)) {
+      productSel.value = prevProduct;
+    } else {
+      const single = _singleSelectableProductValue();
+      if (single) productSel.value = single;
+    }
+    renderSelectedPlatformHint(productSel.value);
+    return;
+  }
+
+  // supplier-driven shortlist
+  populateProductSelects();
+  if (prevProduct && Array.from(productSel.options).some(o => o.value === prevProduct)) {
+    productSel.value = prevProduct;
+  } else {
+    const single = _singleSelectableProductValue();
+    if (single) productSel.value = single;
+  }
+
+  const selectedNow = String(productSel.value || '');
+  const filteredSuppliers = (_supplierContacts || []).filter(s => _supplierCanSupplySelection(s, selectedNow));
+  _setSupplierOptions(filteredSuppliers, prevSupplier, true);
+  if (filteredSuppliers.length === 1) {
+    supplierSel.value = String(filteredSuppliers[0].id);
+  }
+  renderSelectedPlatformHint(productSel.value);
+}
+
+document.getElementById('f-product').addEventListener('change', (e) => {
+  _applyProductSupplierLinkage('product');
+});
+
+document.getElementById('f-supplier-contact').addEventListener('change', () => {
+  _applyProductSupplierLinkage('supplier');
+});
+
+async function loadContacts() {
+  try {
+    const [supRes, buyRes] = await Promise.all([
+      fetch(`${API}/api/financials/contacts/suppliers`),
+      fetch(`${API}/api/financials/contacts/buyers`),
+    ]);
+    const supData = await supRes.json();
+    const buyData = await buyRes.json();
+    _supplierContacts = supData.items || [];
+    _buyerContacts = buyData.items || [];
+  } catch (e) {
+    _supplierContacts = [];
+    _buyerContacts = [];
+    console.error('Failed to load contacts', e);
+  }
+  populateContactSelects();
+}
+
+async function loadPackagingContacts() {
+  try {
+    const res = await fetch(`${API}/api/financials/contacts/packaging-suppliers`);
+    const data = await res.json();
+    _packagingSuppliers = data.items || [];
+  } catch (e) {
+    _packagingSuppliers = [];
+    console.error('Failed to load packaging contacts', e);
+  }
+
+  _packagingCategoryList = Array.from(new Set((_packagingSuppliers || []).flatMap(s => (s.categories || []))))
+    .filter(Boolean)
+    .sort((a, b) => String(a).localeCompare(String(b)));
+
+  populatePackagingContactSelects();
+}
+
+function openModal(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.style.display = 'flex';
+  document.body.classList.add('modal-open');
+  closeActionFab();
+}
+
+function closeModal(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.style.display = 'none';
+  const stillOpen = Array.from(document.querySelectorAll('.modal-overlay')).some(m => m.style.display === 'flex');
+  if (!stillOpen) document.body.classList.remove('modal-open');
+}
+
+function toggleActionFab() {
+  const el = document.getElementById('mobile-actions-fab');
+  if (!el) return;
+  el.classList.toggle('open');
+}
+
+function closeActionFab() {
+  const el = document.getElementById('mobile-actions-fab');
+  if (!el) return;
+  el.classList.remove('open');
+}
+
+function switchContactTab(tab) {
+  const sp = document.getElementById('contacts-suppliers-pane');
+  const pp = document.getElementById('contacts-packaging-pane');
+  const bp = document.getElementById('contacts-buyers-pane');
+  const ts = document.getElementById('tab-suppliers');
+  const tp = document.getElementById('tab-packaging');
+  const tb = document.getElementById('tab-buyers');
+  const isSup = tab === 'suppliers';
+  const isPack = tab === 'packaging';
+  const isBuy = tab === 'buyers';
+  if (sp) sp.style.display = isSup ? '' : 'none';
+  if (pp) pp.style.display = isPack ? '' : 'none';
+  if (bp) bp.style.display = isBuy ? '' : 'none';
+  if (ts) ts.style.borderColor = isSup ? 'var(--amber)' : 'var(--border2)';
+  if (tp) tp.style.borderColor = isPack ? 'var(--amber)' : 'var(--border2)';
+  if (tb) tb.style.borderColor = isBuy ? 'var(--amber)' : 'var(--border2)';
+}
+
+function _groupCoveredByIds(group, idSet) {
+  const mids = (group?.members || []).map(m => Number(m.id));
+  return mids.length > 0 && mids.every(mid => idSet.has(mid));
+}
+
+function _supplierDisplaySummary(supplier) {
+  const ids = new Set((supplier?.supplied_product_ids || []).map(Number));
+  if (!ids.size) return '—';
+
+  const coveredMembers = new Set();
+  const parts = [];
+
+  (_groups || []).forEach(g => {
+    if (_groupCoveredByIds(g, ids)) {
+      parts.push(`[Group] ${g.display_name}`);
+      (g.members || []).forEach(m => coveredMembers.add(Number(m.id)));
+    }
+  });
+
+  const pmap = new Map((_products || []).map(p => [Number(p.id), p.name]));
+  Array.from(ids)
+    .filter(pid => !coveredMembers.has(pid))
+    .sort((a, b) => String(pmap.get(a) || a).localeCompare(String(pmap.get(b) || b)))
+    .forEach(pid => parts.push(pmap.get(pid) || `Product ${pid}`));
+
+  return parts.join(', ');
+}
+
+function _truncateWords(text, maxWords = 8) {
+  const raw = String(text || '').trim();
+  if (!raw) return raw;
+  const words = raw.split(/\s+/);
+  if (words.length <= maxWords) return raw;
+  return `${words.slice(0, maxWords).join(' ')} ...`;
+}
+
+function _supplierCheckedValues() {
+  const host = document.getElementById('c-s-products');
+  if (!host) return [];
+  return Array.from(host.querySelectorAll('input[type=checkbox][data-val]:checked'))
+    .map(el => String(el.dataset.val || ''))
+    .filter(Boolean);
+}
+
+function _setSupplierCheckedValues(values) {
+  const set = new Set((values || []).map(v => String(v)));
+  const host = document.getElementById('c-s-products');
+  if (!host) return;
+  Array.from(host.querySelectorAll('input[type=checkbox][data-val]')).forEach(el => {
+    el.checked = set.has(String(el.dataset.val || ''));
+  });
+}
+
+function _compressProductIdsToDisplayValues(productIds) {
+  const ids = new Set((productIds || []).map(Number));
+  const values = new Set(Array.from(ids).map(x => String(x)));
+  (_groups || []).forEach(g => {
+    if (_groupCoveredByIds(g, ids)) {
+      values.add(`g:${g.id}`);
+      (g.members || []).forEach(m => values.delete(String(m.id)));
+    }
+  });
+  return Array.from(values);
+}
+
+function _expandCheckedValuesToProductIds(values) {
+  const selectedIdsSet = new Set();
+  (values || []).forEach(v => {
+    if (String(v).startsWith('g:')) {
+      const gid = Number(String(v).slice(2));
+      const group = (_groups || []).find(g => Number(g.id) === gid);
+      (group?.members || []).forEach(m => selectedIdsSet.add(Number(m.id)));
+    } else {
+      const pid = Number(v);
+      if (!Number.isNaN(pid) && pid > 0) selectedIdsSet.add(pid);
+    }
+  });
+  return Array.from(selectedIdsSet);
+}
+
+function _buildSupplierChecklist() {
+  const host = document.getElementById('c-s-products');
+  if (!host) return;
+  const prev = _supplierCheckedValues();
+  const rows = [];
+
+  if ((_groups || []).length) {
+    rows.push('<div class="supply-row" style="opacity:.7;font-size:11px;">--- Groups ---</div>');
+    (_groups || []).forEach(g => {
+      rows.push(`<label class="supply-row group"><input type="checkbox" data-val="g:${g.id}">[Group] ${escHtml(g.display_name)}</label>`);
+      const members = [...(g.members || [])].sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+      members.forEach(m => {
+        rows.push(`<label class="supply-row member"><input type="checkbox" data-val="${m.id}">${escHtml(m.name)}</label>`);
+      });
+    });
+  }
+
+  const groupedIds = new Set();
+  (_groups || []).forEach(g => (g.members || []).forEach(m => groupedIds.add(Number(m.id))));
+  const ungrouped = (_products || []).filter(p => !groupedIds.has(Number(p.id)));
+  if (ungrouped.length) {
+    rows.push('<div class="supply-row" style="opacity:.7;font-size:11px;">--- Ungrouped Products ---</div>');
+    ungrouped.forEach(p => rows.push(`<label class="supply-row"><input type="checkbox" data-val="${p.id}">${escHtml(p.name)}</label>`));
+  }
+
+  host.innerHTML = rows.join('');
+  _setSupplierCheckedValues(prev);
+}
+
+function renderContactTables() {
+  const sBody = document.getElementById('suppliers-tbody');
+  const bBody = document.getElementById('buyers-tbody');
+  const sMobile = document.getElementById('suppliers-mobile-list');
+  const bMobile = document.getElementById('buyers-mobile-list');
+
+  if (sBody) {
+    if (!_supplierContacts.length) {
+      sBody.innerHTML = '<tr><td colspan="6" class="empty">No suppliers yet.</td></tr>';
+    } else {
+      sBody.innerHTML = _supplierContacts.map(s => {
+        const phone = `${s.phone_country_code || '+60'} ${s.phone_number || ''}`.trim();
+        const suppliedFull = _supplierDisplaySummary(s);
+        const suppliedShort = _truncateWords(suppliedFull, 8);
+        return `<tr>
+          <td>${escHtml(s.name || '')}</td>
+          <td>${escHtml(s.company_name || '—')}</td>
+          <td>${escHtml(phone)}</td>
+          <td>${escHtml(s.address || '—')}</td>
+          <td style="font-size:12px;line-height:1.4;" title="${escHtml(suppliedFull)}">${escHtml(suppliedShort)}</td>
+          <td style="white-space:nowrap;">
+            <button class="btn" style="font-size:11px;padding:3px 8px;" onclick="editSupplierContact(${s.id})">Edit</button>
+            <button class="btn btn-danger" style="font-size:11px;padding:3px 8px;" onclick="deleteSupplierContact(${s.id})">Delete</button>
+          </td>
+        </tr>`;
+      }).join('');
+    }
+  }
+
+  if (sMobile) {
+    if (!_supplierContacts.length) {
+      sMobile.innerHTML = '<div class="empty" style="padding:18px 12px;">No suppliers yet.</div>';
+    } else {
+      sMobile.innerHTML = _supplierContacts.map(s => {
+        const phone = `${s.phone_country_code || '+60'} ${s.phone_number || ''}`.trim();
+        const suppliedFull = _supplierDisplaySummary(s);
+        const suppliedShort = _truncateWords(suppliedFull, 4);
+        return `<details class="mobile-contact-card">
+          <summary>
+            <div>
+              <div class="mobile-contact-name">${escHtml(s.name || '')}</div>
+              <div class="mobile-contact-sub">${escHtml(s.company_name || 'No company')} â€¢ ${escHtml(phone)}</div>
+            </div>
+            <span class="badge badge-pend">More</span>
+          </summary>
+          <div class="mobile-contact-body">
+            <div class="mobile-contact-row"><b>Address</b><span>${escHtml(s.address || '—')}</span></div>
+            <div class="mobile-contact-row"><b>Supplied</b><span title="${escHtml(suppliedFull)}">${escHtml(suppliedShort || '—')}</span></div>
+            <div class="mobile-contact-actions">
+              <button class="btn" style="font-size:11px;padding:6px 10px;" onclick="editSupplierContact(${s.id})">Edit</button>
+              <button class="btn btn-danger" style="font-size:11px;padding:6px 10px;" onclick="deleteSupplierContact(${s.id})">Delete</button>
+            </div>
+          </div>
+        </details>`;
+      }).join('');
+    }
+  }
+
+  if (bBody) {
+    if (!_buyerContacts.length) {
+      bBody.innerHTML = '<tr><td colspan="6" class="empty">No buyers yet.</td></tr>';
+    } else {
+      bBody.innerHTML = _buyerContacts.map(b => {
+        const phone = `${b.phone_country_code || '+60'} ${b.phone_number || ''}`.trim();
+        const freq = b.most_frequent_product
+          ? `${escHtml(b.most_frequent_product)} (qty ${b.most_frequent_qty || 0})`
+          : '—';
+        return `<tr>
+          <td>${escHtml(b.name || '')}</td>
+          <td>${escHtml(b.company_name || '—')}</td>
+          <td>${escHtml(phone)}</td>
+          <td>${escHtml(b.address || '—')}</td>
+          <td>${freq}</td>
+          <td style="white-space:nowrap;">
+            <button class="btn" style="font-size:11px;padding:3px 8px;" onclick="editBuyerContact(${b.id})">Edit</button>
+            <button class="btn btn-danger" style="font-size:11px;padding:3px 8px;" onclick="deleteBuyerContact(${b.id})">Delete</button>
+          </td>
+        </tr>`;
+      }).join('');
+    }
+  }
+
+  if (bMobile) {
+    if (!_buyerContacts.length) {
+      bMobile.innerHTML = '<div class="empty" style="padding:18px 12px;">No buyers yet.</div>';
+    } else {
+      bMobile.innerHTML = _buyerContacts.map(b => {
+        const phone = `${b.phone_country_code || '+60'} ${b.phone_number || ''}`.trim();
+        const freq = b.most_frequent_product
+          ? `${escHtml(b.most_frequent_product)} (qty ${b.most_frequent_qty || 0})`
+          : '—';
+        return `<details class="mobile-contact-card">
+          <summary>
+            <div>
+              <div class="mobile-contact-name">${escHtml(b.name || '')}</div>
+              <div class="mobile-contact-sub">${escHtml(b.company_name || 'No company')} â€¢ ${escHtml(phone)}</div>
+            </div>
+            <span class="badge badge-pend">More</span>
+          </summary>
+          <div class="mobile-contact-body">
+            <div class="mobile-contact-row"><b>Address</b><span>${escHtml(b.address || 'â€”')}</span></div>
+            <div class="mobile-contact-row"><b>Frequent</b><span>${freq}</span></div>
+            <div class="mobile-contact-actions">
+              <button class="btn" style="font-size:11px;padding:6px 10px;" onclick="editBuyerContact(${b.id})">Edit</button>
+              <button class="btn btn-danger" style="font-size:11px;padding:6px 10px;" onclick="deleteBuyerContact(${b.id})">Delete</button>
+            </div>
+          </div>
+        </details>`;
+      }).join('');
+    }
+  }
+}
+
+function populateContactSelects() {
+  const supplierSel = document.getElementById('f-supplier-contact');
+  const buyerSel = document.getElementById('off-buyer-contact');
+  const buyerFreq = document.getElementById('buyer-freq');
+
+  if (supplierSel) {
+    _setSupplierOptions(_supplierContacts || [], supplierSel.value);
+  }
+
+  if (buyerSel) {
+    const cur = buyerSel.value;
+    buyerSel.innerHTML = '<option value="">-- select buyer --</option>';
+    (_buyerContacts || []).forEach(b => {
+      const label = b.company_name ? `${b.name} (${b.company_name})` : b.name;
+      buyerSel.add(new Option(label, String(b.id)));
+    });
+    if (cur && Array.from(buyerSel.options).some(o => o.value === cur)) buyerSel.value = cur;
+  }
+
+  _buildSupplierChecklist();
+
+  if (buyerFreq) {
+    const lines = (_buyerContacts || [])
+      .filter(b => b.most_frequent_product)
+      .slice(0, 6)
+      .map(b => `${escHtml(b.name)}: ${escHtml(b.most_frequent_product)} (qty ${b.most_frequent_qty || 0})`);
+    buyerFreq.innerHTML = lines.length
+      ? `<strong>Top buyer products:</strong><br>${lines.join('<br>')}`
+      : 'Top buyer products will appear after you record off-platform sales.';
+  }
+
+  renderContactTables();
+}
+
+function _selectedChecklistValues(hostId) {
+  const host = document.getElementById(hostId);
+  if (!host) return [];
+  return Array.from(host.querySelectorAll('input[type=checkbox][data-value]:checked'))
+    .map(el => String(el.dataset.value || ''))
+    .filter(Boolean);
+}
+
+function _setChecklistValues(hostId, values) {
+  const host = document.getElementById(hostId);
+  if (!host) return;
+  const selected = new Set((values || []).map(value => String(value).toLowerCase()));
+  Array.from(host.querySelectorAll('input[type=checkbox][data-value]')).forEach(el => {
+    el.checked = selected.has(String(el.dataset.value || '').toLowerCase());
+  });
+}
+
+function _renderChecklist(hostId, values, selectedValues = [], emptyLabel = 'No categories yet.') {
+  const host = document.getElementById(hostId);
+  if (!host) return;
+  const selected = new Set((selectedValues || []).map(value => String(value).toLowerCase()));
+  const rows = [];
+
+  (values || []).forEach(value => {
+    const label = String(value || '').trim();
+    if (!label) return;
+    const key = label.toLowerCase();
+    rows.push(`<label class="supply-row"><input type="checkbox" data-value="${escAttr(label)}" ${selected.has(key) ? 'checked' : ''}>${escHtml(label)}</label>`);
+  });
+
+  host.innerHTML = rows.length
+    ? rows.join('')
+    : `<div class="hint-muted" style="padding:4px 2px;">${escHtml(emptyLabel)}</div>`;
+}
+
+function _packagingCategorySet() {
+  return new Set((_packagingCategoryList || []).map(value => String(value).toLowerCase()));
+}
+
+function _buildPackagingCategoryChecklist() {
+  const selected = _selectedChecklistValues('c-p-categories');
+  _renderChecklist('c-p-categories', _packagingCategoryList || [], selected, 'Add categories to start building your supplier list.');
+}
+
+function _selectedPackagingSupplierCategoryValues() {
+  return _selectedChecklistValues('c-p-categories');
+}
+
+function _selectedPackagingPurchaseCategoryValues() {
+  return _selectedChecklistValues('f-packaging-categories');
+}
+
+function _setPackagingSupplierCategoryValues(values) {
+  _setChecklistValues('c-p-categories', values);
+}
+
+function _setPackagingPurchaseCategoryValues(values) {
+  _setChecklistValues('f-packaging-categories', values);
+}
+
+function _packagingSupplierDisplaySummary(supplier) {
+  const categories = Array.isArray(supplier?.categories) ? supplier.categories : [];
+  return categories.length ? categories.join(', ') : '—';
+}
+
+function _buildPackagingSupplierCategoryOptions(selectedNames = []) {
+  _renderChecklist('c-p-categories', _packagingCategoryList || [], selectedNames, 'Add categories to start building your supplier list.');
+}
+
+function addPackagingCategoryFromInput() {
+  const input = document.getElementById('c-p-category-new');
+  if (!input) return;
+  const raw = input.value.trim();
+  if (!raw) return;
+
+  const prevSelected = _selectedPackagingSupplierCategoryValues();
+  const existing = _packagingCategorySet();
+  if (!existing.has(raw.toLowerCase())) {
+    _packagingCategoryList = [...(_packagingCategoryList || []), raw].sort((a, b) => String(a).localeCompare(String(b)));
+  }
+  _buildPackagingCategoryChecklist();
+  const selected = new Set(prevSelected.map(value => String(value).toLowerCase()));
+  selected.add(raw.toLowerCase());
+  _setPackagingSupplierCategoryValues(Array.from(selected));
+  input.value = '';
+}
+
+function populatePackagingContactSelects() {
+  const supplierSel = document.getElementById('f-packaging-supplier');
+  const supplierHint = document.getElementById('f-packaging-category-hint');
+  if (supplierSel) {
+    const cur = supplierSel.value;
+    supplierSel.innerHTML = '<option value="">-- select packaging supplier --</option>';
+    (_packagingSuppliers || []).forEach(supplier => {
+      const label = supplier.company_name ? `${supplier.name} (${supplier.company_name})` : supplier.name;
+      const suffix = Array.isArray(supplier.categories) && supplier.categories.length
+        ? ` (${supplier.categories.length} categories)`
+        : '';
+      supplierSel.add(new Option(`${label}${suffix}`, String(supplier.id)));
+    });
+    if (cur && Array.from(supplierSel.options).some(option => option.value === cur)) {
+      supplierSel.value = cur;
+    }
+  }
+
+  _buildPackagingCategoryChecklist();
+  renderPackagingContactTables();
+  renderPackagingPurchaseCategoryChecklist();
+
+  if (supplierHint) {
+    supplierHint.textContent = (_packagingCategoryList || []).length
+      ? 'Add new categories or check existing ones, then save the supplier.'
+      : 'No packaging categories yet. Add one to get started.';
+  }
+}
+
+function renderPackagingContactTables() {
+  const body = document.getElementById('packaging-suppliers-tbody');
+  const mobile = document.getElementById('packaging-suppliers-mobile-list');
+
+  if (body) {
+    if (!(_packagingSuppliers || []).length) {
+      body.innerHTML = '<tr><td colspan="6" class="empty">No packaging suppliers yet.</td></tr>';
+    } else {
+      body.innerHTML = _packagingSuppliers.map(supplier => {
+        const phone = `${supplier.phone_country_code || '+60'} ${supplier.phone_number || ''}`.trim();
+        const categories = _packagingSupplierDisplaySummary(supplier);
+        return `<tr>
+          <td>${escHtml(supplier.name || '')}</td>
+          <td>${escHtml(supplier.company_name || '—')}</td>
+          <td>${escHtml(phone)}</td>
+          <td>${escHtml(supplier.address || '—')}</td>
+          <td title="${escAttr(categories)}">${escHtml(categories)}</td>
+          <td style="white-space:nowrap;">
+            <button class="btn" style="font-size:11px;padding:3px 8px;" onclick="editPackagingSupplierContact(${supplier.id})">Edit</button>
+            <button class="btn btn-danger" style="font-size:11px;padding:3px 8px;" onclick="deletePackagingSupplierContact(${supplier.id})">Delete</button>
+          </td>
+        </tr>`;
+      }).join('');
+    }
+  }
+
+  if (mobile) {
+    if (!(_packagingSuppliers || []).length) {
+      mobile.innerHTML = '<div class="empty" style="padding:18px 12px;">No packaging suppliers yet.</div>';
+    } else {
+      mobile.innerHTML = _packagingSuppliers.map(supplier => {
+        const phone = `${supplier.phone_country_code || '+60'} ${supplier.phone_number || ''}`.trim();
+        const categories = _packagingSupplierDisplaySummary(supplier);
+        return `<details class="mobile-contact-card">
+          <summary>
+            <div>
+              <div class="mobile-contact-name">${escHtml(supplier.name || '')}</div>
+              <div class="mobile-contact-sub">${escHtml(supplier.company_name || 'No company')} â€¢ ${escHtml(phone)}</div>
+            </div>
+            <span class="badge badge-pend">More</span>
+          </summary>
+          <div class="mobile-contact-body">
+            <div class="mobile-contact-row"><b>Address</b><span>${escHtml(supplier.address || '—')}</span></div>
+            <div class="mobile-contact-row"><b>Categories</b><span>${escHtml(categories)}</span></div>
+            <div class="mobile-contact-actions">
+              <button class="btn" style="font-size:11px;padding:6px 10px;" onclick="editPackagingSupplierContact(${supplier.id})">Edit</button>
+              <button class="btn btn-danger" style="font-size:11px;padding:6px 10px;" onclick="deletePackagingSupplierContact(${supplier.id})">Delete</button>
+            </div>
+          </div>
+        </details>`;
+      }).join('');
+    }
+  }
+}
+
+function resetPackagingSupplierForm() {
+  document.getElementById('c-p-id').value = '';
+  ['c-p-name', 'c-p-company', 'c-p-phone', 'c-p-address', 'c-p-category-new'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  const code = document.getElementById('c-p-code');
+  if (code) code.value = '+60';
+  _setPackagingSupplierCategoryValues([]);
+}
+
+function editPackagingSupplierContact(id) {
+  const supplier = (_packagingSuppliers || []).find(row => Number(row.id) === Number(id));
+  if (!supplier) return;
+  document.getElementById('c-p-id').value = String(supplier.id);
+  document.getElementById('c-p-name').value = supplier.name || '';
+  document.getElementById('c-p-company').value = supplier.company_name || '';
+  document.getElementById('c-p-code').value = supplier.phone_country_code || '+60';
+  document.getElementById('c-p-phone').value = supplier.phone_number || '';
+  document.getElementById('c-p-address').value = supplier.address || '';
+  _setPackagingSupplierCategoryValues(supplier.categories || []);
+  switchContactTab('packaging');
+}
+
+async function savePackagingSupplierContact() {
+  const id = document.getElementById('c-p-id').value;
+  const name = document.getElementById('c-p-name').value.trim();
+  const company = document.getElementById('c-p-company').value.trim();
+  const countryCode = document.getElementById('c-p-code').value;
+  const phone = document.getElementById('c-p-phone').value.trim();
+  const address = document.getElementById('c-p-address').value.trim();
+  const categoryNames = _selectedPackagingSupplierCategoryValues();
+
+  if (!name || !phone) {
+    showToast('Packaging supplier name and phone are required', 'err');
+    return;
+  }
+
+  const fd = new FormData();
+  fd.append('name', name);
+  fd.append('phone_country_code', countryCode);
+  fd.append('company_name', company);
+  fd.append('phone_number', phone);
+  fd.append('address', address);
+  fd.append('category_names_json', JSON.stringify(categoryNames));
+
+  const isEdit = !!id;
+  const url = isEdit
+    ? `${API}/api/financials/contacts/packaging-suppliers/${id}`
+    : `${API}/api/financials/contacts/packaging-suppliers`;
+  const method = isEdit ? 'PUT' : 'POST';
+  const res = await fetch(url, { method, body: fd });
+  const data = await res.json();
+  if (!res.ok) {
+    showToast(data.detail || 'Failed to save packaging supplier', 'err');
+    return;
+  }
+
+  resetPackagingSupplierForm();
+  await loadPackagingContacts();
+  loadPackagingPurchases();
+  showToast(isEdit ? 'Packaging supplier updated' : 'Packaging supplier added', 'ok');
+}
+
+async function deletePackagingSupplierContact(id) {
+  if (!confirm('Delete this packaging supplier contact?')) return;
+  const res = await fetch(`${API}/api/financials/contacts/packaging-suppliers/${id}`, { method: 'DELETE' });
+  const data = await res.json();
+  if (!res.ok) {
+    showToast(data.detail || 'Failed to delete packaging supplier', 'err');
+    return;
+  }
+  await loadPackagingContacts();
+  loadPackagingPurchases();
+  resetPackagingSupplierForm();
+  showToast('Packaging supplier deleted', 'ok');
+}
+
+function _packagingSelectedSupplier() {
+  const supplierId = Number(document.getElementById('f-packaging-supplier')?.value || 0);
+  return (_packagingSuppliers || []).find(supplier => Number(supplier.id) === supplierId) || null;
+}
+
+function renderPackagingPurchaseCategoryChecklist(selectedValues = []) {
+  const host = document.getElementById('f-packaging-categories');
+  const hint = document.getElementById('f-packaging-category-hint');
+  const supplier = _packagingSelectedSupplier();
+  const categories = Array.isArray(supplier?.categories) ? supplier.categories : [];
+
+  _renderChecklist('f-packaging-categories', categories, selectedValues, 'Choose a supplier first.');
+  if (hint) {
+    if (!supplier) {
+      hint.textContent = 'Choose a packaging supplier to load its categories.';
+    } else if (!categories.length) {
+      hint.textContent = 'This supplier has no categories yet.';
+    } else {
+      hint.textContent = 'Select one or more categories for this packaging purchase.';
+    }
+  }
+  if (host && !categories.length && supplier) {
+    host.innerHTML = '<div class="hint-muted" style="padding:4px 2px;">This supplier has no categories yet.</div>';
+  }
+}
+
+function initPackagingPurchaseForm() {
+  const today = new Date().toISOString().slice(0, 10);
+  const dateEl = document.getElementById('f-packaging-date');
+  if (dateEl && !dateEl.value) dateEl.value = today;
+  const supplierSel = document.getElementById('f-packaging-supplier');
+  if (supplierSel) {
+    supplierSel.addEventListener('change', () => {
+      renderPackagingPurchaseCategoryChecklist(_selectedPackagingPurchaseCategoryValues());
+    });
+  }
+  const qtyEl = document.getElementById('f-packaging-qty');
+  const costEl = document.getElementById('f-packaging-cost');
+  if (qtyEl) qtyEl.addEventListener('input', updatePackagingTotal);
+  if (costEl) costEl.addEventListener('input', updatePackagingTotal);
+  updatePackagingTotal();
+  renderPackagingPurchaseCategoryChecklist();
+}
+
+function updatePackagingTotal() {
+  const qty = parseFloat(document.getElementById('f-packaging-qty')?.value) || 0;
+  const cost = parseFloat(document.getElementById('f-packaging-cost')?.value) || 0;
+  const totalEl = document.getElementById('f-packaging-total');
+  if (totalEl) totalEl.value = qty && cost ? `RM ${(qty * cost).toFixed(2)}` : '';
+}
+
+async function submitPackagingPurchase(e) {
+  e.preventDefault();
+  const btn = document.getElementById('packaging-submit-btn');
+  const status = document.getElementById('packaging-form-status');
+  btn.disabled = true;
+  btn.textContent = '⏳ Saving...';
+  status.textContent = '';
+
+  try {
+    const supplierId = document.getElementById('f-packaging-supplier').value;
+    const categoryNames = _selectedPackagingPurchaseCategoryValues();
+    const unitCostRaw = (document.getElementById('f-packaging-cost')?.value || '').trim();
+    if (!supplierId) throw new Error('Please select a packaging supplier.');
+    if (!categoryNames.length) throw new Error('Please select at least one category.');
+    if (!hasAtMostDecimals(unitCostRaw, 4)) throw new Error('Unit Cost supports up to 4 decimal places.');
+
+    const fd = new FormData();
+    fd.append('packaging_supplier_id', supplierId);
+    fd.append('purchase_date', document.getElementById('f-packaging-date').value);
+    fd.append('qty', document.getElementById('f-packaging-qty').value);
+    fd.append('unit_cost', unitCostRaw);
+    fd.append('product_name', document.getElementById('f-packaging-product-name').value);
+    fd.append('notes', document.getElementById('f-packaging-notes').value);
+    fd.append('category_names_json', JSON.stringify(categoryNames));
+
+    const itemCam = document.getElementById('f-photo-pack-item-cam');
+    const itemLib = document.getElementById('f-photo-pack-item-lib');
+    const receiptCam = document.getElementById('f-photo-pack-receipt-cam');
+    const receiptLib = document.getElementById('f-photo-pack-receipt-lib');
+    const photoItem = (itemCam && itemCam.files[0]) || (itemLib && itemLib.files[0]) || null;
+    const photoReceipt = (receiptCam && receiptCam.files[0]) || (receiptLib && receiptLib.files[0]) || null;
+    if (photoItem) fd.append('photo_item', photoItem);
+    if (photoReceipt) fd.append('photo_receipt', photoReceipt);
+
+    const res = await fetch(`${API}/api/financials/packaging-purchases`, { method: 'POST', body: fd });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || JSON.stringify(data));
+
+    showToast(`✓ Packaging purchase saved (${data.purchase.qty} item(s))`, 'ok');
+    status.innerHTML = `<span style="color:var(--green)">✓ Saved. Total RM ${(data.purchase.total_cost || 0).toFixed(2)}</span>`;
+
+    document.getElementById('f-packaging-qty').value = '';
+    document.getElementById('f-packaging-cost').value = '';
+    document.getElementById('f-packaging-total').value = '';
+    document.getElementById('f-packaging-product-name').value = '';
+    document.getElementById('f-packaging-notes').value = '';
+    document.getElementById('f-packaging-categories').innerHTML = '';
+    document.getElementById('f-packaging-supplier').value = '';
+    clearPhoto('pack-item');
+    clearPhoto('pack-receipt');
+    renderPackagingPurchaseCategoryChecklist();
+    loadPackagingPurchases();
+  } catch (err) {
+    showToast(`✖ ${err.message}`, 'err');
+    status.innerHTML = `<span style="color:var(--red)">✖ ${escHtml(err.message)}</span>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '💾 Save Packaging Purchase';
+  }
+}
+
+async function loadPackagingPurchases(resetPage = false) {
+  if (resetPage) _packagingOffset = 0;
+  let url = `${API}/api/financials/packaging-purchases?limit=${PACKAGING_PAGE}&offset=${_packagingOffset}`;
+
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    renderPackagingPurchaseTable(data.items || []);
+    renderPackagingPagination(data.total || 0);
+  } catch (e) {
+    const tbody = document.getElementById('packaging-purchases-tbody');
+    if (tbody) tbody.innerHTML = '<tr><td colspan="10" class="empty" style="color:var(--red)">Failed to load</td></tr>';
+  }
+}
+
+function renderPackagingPurchaseTable(items) {
+  const tbody = document.getElementById('packaging-purchases-tbody');
+  if (!tbody) return;
+  if (!items.length) {
+    tbody.innerHTML = '<tr><td class="empty" colspan="1">No packaging purchases recorded yet.</td></tr>';
+    return;
+  }
+
+  const isMobile = window.matchMedia('(max-width: 860px)').matches;
+
+  if (isMobile) {
+    tbody.innerHTML = items.map(item => {
+      const categories = (item.categories || []).length ? (item.categories || []).map(escHtml).join(', ') : '—';
+      const photos = [
+        item.photo_item ? `${API}/api/financials/purchases/photo/${item.photo_item}` : null,
+        item.photo_receipt ? `${API}/api/financials/purchases/photo/${item.photo_receipt}` : null,
+      ].filter(Boolean);
+      const firstPhoto = photos[0];
+
+      return `<tr data-record-id="${item.id}" data-record-type="packaging" data-product-name="${escAttr(item.product_name || 'Packaging Item')}" data-record-date="${escAttr(item.purchase_date)}" data-qty="${escAttr(item.qty)}" data-unit-cost="${escAttr(item.unit_cost)}" data-total-cost="${escAttr(item.total_cost)}" data-supplier-name="${escAttr(item.supplier_name || '')}" data-categories="${escAttr(categories)}" data-photo-src="${escAttr(firstPhoto || '')}">
+        <td style="position: relative; padding: 0; display: flex; flex-direction: column; width: 100%;">
+          <div class="mobile-card-header" style="position: relative; align-items: flex-start;">
+            ${firstPhoto ? `<img src="${firstPhoto}" class="mobile-card-thumbnail" alt="Package">` : `<div class="mobile-card-thumbnail" style="background: var(--surface); display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 24px;">📦</div>`}
+            <div class="mobile-card-main">
+              <div class="mobile-card-title">${escHtml(item.product_name || 'Packaging Item')}</div>
+              <div style="font-size:12px;color:var(--muted);line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(item.supplier_name || '—')}</div>
+              <div class="mobile-card-date">📅 ${item.purchase_date}</div>
+            </div>
+            <div class="mobile-card-meta">
+              <div class="mobile-card-meta-top">
+                <div class="mobile-card-amount">RM ${(item.total_cost||0).toFixed(2)}</div>
+              </div>
+              <div style="font-size:11px;color:var(--muted);font-family:var(--mono);">RM ${(item.unit_cost || 0).toFixed(2)}/unit</div>
+            </div>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+    bindMobileCardInteractions('packaging-purchases-tbody');
+  } else {
+    // Desktop view
+    tbody.innerHTML = items.map(item => {
+      const categories = (item.categories || []).length ? (item.categories || []).map(escHtml).join(', ') : '—';
+      const photos = [
+        item.photo_item ? `<img class="thumb" src="${API}/api/financials/purchases/photo/${item.photo_item}" onclick="openLightbox(this.src)" title="Packaging item photo">` : '',
+        item.photo_receipt ? `<img class="thumb" src="${API}/api/financials/purchases/photo/${item.photo_receipt}" onclick="openLightbox(this.src)" title="Packaging document photo">` : '',
+      ].filter(Boolean).join(' ') || '<span style="color:var(--muted);font-size:11px">—</span>';
+      const notes = item.notes ? escHtml(item.notes) : '—';
+      return `<tr>
+        <td class="cell-date" style="font-family:var(--mono);font-size:12px;white-space:nowrap;">${item.purchase_date}</td>
+        <td class="cell-supplier">${escHtml(item.supplier_name || '—')}</td>
+        <td style="font-size:12px;line-height:1.4;">${categories}</td>
+        <td class="right" style="font-family:var(--mono);">${item.qty}</td>
+        <td class="right" style="font-family:var(--mono);">RM ${(item.unit_cost || 0).toFixed(2)}</td>
+        <td class="right cell-total" style="font-family:var(--mono);color:var(--amber);">RM ${(item.total_cost || 0).toFixed(2)}</td>
+        <td class="cell-product">${escHtml(item.product_name || '—')}</td>
+        <td class="cell-photos">${photos}</td>
+        <td style="font-size:12px;line-height:1.4;">${notes}</td>
+        <td class="cell-actions"><button class="btn btn-danger" style="font-size:11px;padding:3px 8px;" onclick="deletePackagingPurchase(${item.id})">Delete</button></td>
+      </tr>`;
+    }).join('');
+  }
+}
+
+function renderPackagingPagination(total) {
+  const pag = document.getElementById('packaging-pagination');
+  if (!pag) return;
+  const pages = Math.ceil(total / PACKAGING_PAGE);
+  const cur = Math.floor(_packagingOffset / PACKAGING_PAGE) + 1;
+  if (pages <= 1) {
+    pag.innerHTML = `<span>${total} record${total !== 1 ? 's' : ''}</span>`;
+    return;
+  }
+  pag.innerHTML = `
+    <span>${total} records</span>
+    <button class="btn" style="font-size:11px;padding:3px 8px;" onclick="changePackagingPage(-1)" ${cur <= 1 ? 'disabled' : ''}>â€¹ Prev</button>
+    <span>Page ${cur} / ${pages}</span>
+    <button class="btn" style="font-size:11px;padding:3px 8px;" onclick="changePackagingPage(1)" ${cur >= pages ? 'disabled' : ''}>Next â€º</button>
+  `;
+}
+
+function changePackagingPage(dir) {
+  _packagingOffset = Math.max(0, _packagingOffset + dir * PACKAGING_PAGE);
+  loadPackagingPurchases();
+}
+
+async function deletePackagingPurchase(id) {
+  if (!confirm('Delete this packaging purchase record?')) return;
+  const res = await fetch(`${API}/api/financials/packaging-purchases/${id}`, { method: 'DELETE' });
+  if (res.ok) {
+    showToast('Packaging purchase deleted', 'ok');
+    closeDetailModal();
+    loadPackagingPurchases();
+  } else {
+    showToast('Delete failed', 'err');
+  }
+}
+
+async function deleteOffSale(id) {
+  const res = await fetch(`${API}/api/financials/off-platform-sales/${id}`, { method: 'DELETE' });
+  if (res.ok) {
+    showToast('Off-platform sale deleted', 'ok');
+    loadOffSales();
+    loadPurchases();
+  } else {
+    let message = 'Delete failed';
+    try {
+      const data = await res.json();
+      message = data.detail || message;
+    } catch (e) {}
+    showToast(message, 'err');
+  }
+}
+
+function resetSupplierForm() {
+  document.getElementById('c-s-id').value = '';
+  ['c-s-name', 'c-s-company', 'c-s-phone', 'c-s-address'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  const code = document.getElementById('c-s-code');
+  if (code) code.value = '+60';
+  _setSupplierCheckedValues([]);
+}
+
+function resetBuyerForm() {
+  document.getElementById('c-b-id').value = '';
+  ['c-b-name', 'c-b-company', 'c-b-phone', 'c-b-address'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  const code = document.getElementById('c-b-code');
+  if (code) code.value = '+60';
+}
+
+function editSupplierContact(id) {
+  const s = (_supplierContacts || []).find(x => Number(x.id) === Number(id));
+  if (!s) return;
+  document.getElementById('c-s-id').value = String(s.id);
+  document.getElementById('c-s-name').value = s.name || '';
+  document.getElementById('c-s-company').value = s.company_name || '';
+  document.getElementById('c-s-code').value = s.phone_country_code || '+60';
+  document.getElementById('c-s-phone').value = s.phone_number || '';
+  document.getElementById('c-s-address').value = s.address || '';
+  _setSupplierCheckedValues(_compressProductIdsToDisplayValues(s.supplied_product_ids || []));
+  switchContactTab('suppliers');
+}
+
+function editBuyerContact(id) {
+  const b = (_buyerContacts || []).find(x => Number(x.id) === Number(id));
+  if (!b) return;
+  document.getElementById('c-b-id').value = String(b.id);
+  document.getElementById('c-b-name').value = b.name || '';
+  document.getElementById('c-b-company').value = b.company_name || '';
+  document.getElementById('c-b-code').value = b.phone_country_code || '+60';
+  document.getElementById('c-b-phone').value = b.phone_number || '';
+  document.getElementById('c-b-address').value = b.address || '';
+  switchContactTab('buyers');
+}
+
+async function saveSupplierContact() {
+  const name = document.getElementById('c-s-name').value.trim();
+  const id = document.getElementById('c-s-id').value;
+  const countryCode = document.getElementById('c-s-code').value;
+  const company = document.getElementById('c-s-company').value.trim();
+  const phone = document.getElementById('c-s-phone').value.trim();
+  const address = document.getElementById('c-s-address').value.trim();
+  const selectedIds = _expandCheckedValuesToProductIds(_supplierCheckedValues());
+
+  if (!name || !phone) {
+    showToast('Supplier name and phone are required', 'err');
+    return;
+  }
+
+  const fd = new FormData();
+  fd.append('name', name);
+  fd.append('phone_country_code', countryCode);
+  fd.append('company_name', company);
+  fd.append('phone_number', phone);
+  fd.append('address', address);
+  fd.append('supplied_product_ids_json', JSON.stringify(selectedIds));
+
+  const isEdit = !!id;
+  const url = isEdit
+    ? `${API}/api/financials/contacts/suppliers/${id}`
+    : `${API}/api/financials/contacts/suppliers`;
+  const method = isEdit ? 'PUT' : 'POST';
+  const res = await fetch(url, { method, body: fd });
+  const data = await res.json();
+  if (!res.ok) {
+    showToast(data.detail || 'Failed to save supplier', 'err');
+    return;
+  }
+
+  resetSupplierForm();
+
+  await loadContacts();
+  populateProductSelects();
+  _applyProductSupplierLinkage('supplier');
+  showToast(isEdit ? 'Supplier updated' : 'Supplier added', 'ok');
+}
+
+async function deleteSupplierContact(id) {
+  if (!confirm('Delete this supplier contact?')) return;
+  const res = await fetch(`${API}/api/financials/contacts/suppliers/${id}`, { method: 'DELETE' });
+  const data = await res.json();
+  if (!res.ok) {
+    showToast(data.detail || 'Failed to delete supplier', 'err');
+    return;
+  }
+  await loadContacts();
+  populateProductSelects();
+  _applyProductSupplierLinkage('supplier');
+  resetSupplierForm();
+  showToast('Supplier deleted', 'ok');
+}
+
+async function saveBuyerContact() {
+  const name = document.getElementById('c-b-name').value.trim();
+  const id = document.getElementById('c-b-id').value;
+  const countryCode = document.getElementById('c-b-code').value;
+  const company = document.getElementById('c-b-company').value.trim();
+  const phone = document.getElementById('c-b-phone').value.trim();
+  const address = document.getElementById('c-b-address').value.trim();
+
+  if (!name || !phone) {
+    showToast('Buyer name and phone are required', 'err');
+    return;
+  }
+
+  const fd = new FormData();
+  fd.append('name', name);
+  fd.append('phone_country_code', countryCode);
+  fd.append('company_name', company);
+  fd.append('phone_number', phone);
+  fd.append('address', address);
+
+  const isEdit = !!id;
+  const url = isEdit
+    ? `${API}/api/financials/contacts/buyers/${id}`
+    : `${API}/api/financials/contacts/buyers`;
+  const method = isEdit ? 'PUT' : 'POST';
+  const res = await fetch(url, { method, body: fd });
+  const data = await res.json();
+  if (!res.ok) {
+    showToast(data.detail || 'Failed to save buyer', 'err');
+    return;
+  }
+
+  resetBuyerForm();
+
+  await loadContacts();
+  showToast(isEdit ? 'Buyer updated' : 'Buyer added', 'ok');
+}
+
+async function deleteBuyerContact(id) {
+  if (!confirm('Delete this buyer contact?')) return;
+  const res = await fetch(`${API}/api/financials/contacts/buyers/${id}`, { method: 'DELETE' });
+  const data = await res.json();
+  if (!res.ok) {
+    showToast(data.detail || 'Failed to delete buyer', 'err');
+    return;
+  }
+  await loadContacts();
+  resetBuyerForm();
+  showToast('Buyer deleted', 'ok');
+}
+
+// â”€â”€ Auto-compute total cost â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+document.getElementById('f-qty').addEventListener('input', updateTotal);
+document.getElementById('f-cost').addEventListener('input', updateTotal);
+
+function updateTotal() {
+  const qty  = parseFloat(document.getElementById('f-qty').value)  || 0;
+  const cost = parseFloat(document.getElementById('f-cost').value) || 0;
+  document.getElementById('f-total').value = qty && cost ? `RM ${(qty * cost).toFixed(2)}` : '';
+}
+
+function hasAtMostDecimals(raw, maxDecimals) {
+  const value = String(raw || '').trim();
+  if (!value) return false;
+  if (!/^\d+(\.\d+)?$/.test(value)) return false;
+  const dot = value.indexOf('.');
+  if (dot === -1) return true;
+  return (value.length - dot - 1) <= maxDecimals;
+}
+
+// â”€â”€ Photo preview â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+function _photoIds(kind) {
+  if (kind === 'goods') {
+    return { camId: 'f-photo-goods-cam', libId: 'f-photo-goods-lib', prevId: 'prev-goods', zoneId: 'zone-goods', clearId: 'clear-goods' };
+  }
+  if (kind === 'receipt') {
+    return { camId: 'f-photo-receipt-cam', libId: 'f-photo-receipt-lib', prevId: 'prev-receipt', zoneId: 'zone-receipt', clearId: 'clear-receipt' };
+  }
+  if (kind === 'pack-item') {
+    return { camId: 'f-photo-pack-item-cam', libId: 'f-photo-pack-item-lib', prevId: 'prev-pack-item', zoneId: 'zone-pack-item', clearId: 'clear-pack-item' };
+  }
+  if (kind === 'pack-receipt') {
+    return { camId: 'f-photo-pack-receipt-cam', libId: 'f-photo-pack-receipt-lib', prevId: 'prev-pack-receipt', zoneId: 'zone-pack-receipt', clearId: 'clear-pack-receipt' };
+  }
+  return null;
+}
+
+function previewPhoto(input, previewId, zoneId) {
+  const file = input.files[0];
+  if (!file) return;
+  const prev = document.getElementById(previewId);
+  prev.src   = URL.createObjectURL(file);
+  prev.style.display = 'block';
+  document.querySelector(`#${zoneId} .photo-zone-label`).style.display = 'none';
+  const clearBtn = document.getElementById(zoneId === 'zone-goods'
+    ? 'clear-goods'
+    : zoneId === 'zone-receipt'
+      ? 'clear-receipt'
+      : zoneId === 'zone-pack-item'
+        ? 'clear-pack-item'
+        : 'clear-pack-receipt');
+  if (clearBtn) clearBtn.style.display = 'inline-flex';
+}
+
+function openPhotoChooser(kind, mode) {
+  const meta = _photoIds(kind);
+  if (!meta) return;
+  const id = mode === 'camera' ? meta.camId : meta.libId;
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.click();
+}
+
+function clearPhoto(kind) {
+  const meta = _photoIds(kind);
+  if (!meta) return;
+  const { camId, libId, prevId, zoneId, clearId } = meta;
+
+  const cam = document.getElementById(camId);
+  const lib = document.getElementById(libId);
+  if (cam) cam.value = '';
+  if (lib) lib.value = '';
+
+  const prev = document.getElementById(prevId);
+  if (prev) {
+    prev.src = '';
+    prev.style.display = 'none';
+  }
+
+  const label = document.querySelector(`#${zoneId} .photo-zone-label`);
+  if (label) label.style.display = '';
+
+  const clearBtn = document.getElementById(clearId);
+  if (clearBtn) clearBtn.style.display = 'none';
+}
+
+function viewPackagingDetail(e, recordId, productName, date, qty, unitCost, total, supplier, categories, photoSrc = '') {
+  if (e && e.stopPropagation) e.stopPropagation();
+  const details = {
+    type: 'packaging',
+    product_name: decodeURIComponent(productName),
+    purchase_date: date,
+    qty: qty,
+    unit_cost: unitCost,
+    total_cost: total,
+    supplier_name: decodeURIComponent(supplier),
+    categories: decodeURIComponent(categories),
+    photo_src: photoSrc,
+  };
+  showDetailModal(details);
+}
+
+function viewOffSaleDetail(e, recordId, buyer, date, amount, photoSrc = '', itemsText = '') {
+  if (e && e.stopPropagation) e.stopPropagation();
+  const details = {
+    type: 'offsale',
+    sold_to: decodeURIComponent(buyer),
+    sale_date: date,
+    total_amount: amount,
+    photo_src: photoSrc,
+    items_text: itemsText,
+  };
+  showDetailModal(details);
+}
+
+function showDetailModal(details) {
+  const modal = document.createElement('div');
+  modal.className = 'mobile-detail-modal open';
+  document.body.classList.add('modal-open');
+  
+  let contentHtml = '';
+  let actionsHtml = '';
+  const heroHtml = details.photo_src
+    ? `<div class="mobile-detail-hero"><img src="${escAttr(details.photo_src)}" onclick="openLightbox(this.src)" alt="Preview"></div>`
+    : '';
+  
+  if (details.type === 'purchase') {
+    actionsHtml = `
+      <div class="mobile-detail-actions">
+        <button class="btn btn-danger" type="button" onclick="deletePurchase(${Number(details.id)})">Delete Purchase</button>
+        <button class="btn" type="button" onclick="closeDetailModal(this)">Close</button>
+      </div>
+    `;
+    contentHtml = `
+      <div class="mobile-detail-panel">
+          <div class="mobile-detail-header">
+          <div>
+            <div style="font-size: 12px; color: var(--muted);">PURCHASE RECORD</div>
+            <div style="font-size: 16px; color: #fff; font-weight: 600;">${escHtml(details.product_name)}</div>
+          </div>
+          <button class="mobile-detail-close" onclick="closeDetailModal(this)">✖</button>
+        </div>
+        ${heroHtml}
+
+        <div style="display: grid; gap: 12px;">
+          <div style="background: rgba(255,255,255,.03); padding: 12px; border-radius: 8px; border: 1px solid var(--border2);">
+            <div style="font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 8px;">Date</div>
+            <div style="font-size: 14px; color: #fff; font-family: var(--mono);">${details.purchase_date}</div>
+          </div>
+          
+          <div style="background: rgba(255,255,255,.03); padding: 12px; border-radius: 8px; border: 1px solid var(--border2);">
+            <div style="font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 8px;">Quantity</div>
+            <div style="font-size: 14px; color: #fff;">${details.qty} units</div>
+          </div>
+
+          <div style="background: rgba(255,255,255,.03); padding: 12px; border-radius: 8px; border: 1px solid var(--border2);">
+            <div style="font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 8px;">Unit Price</div>
+            <div style="font-size: 14px; color: #fff; font-family: var(--mono);">RM ${Number(details.unit_cost).toFixed(2)}</div>
+          </div>
+
+          <div style="background: rgba(245,158,11,.1); padding: 12px; border-radius: 8px; border: 1px solid rgba(245,158,11,.3);">
+            <div style="font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 8px;">Total Amount</div>
+            <div style="font-size: 18px; color: var(--amber); font-weight: 700; font-family: var(--mono);">RM ${Number(details.total_cost).toFixed(2)}</div>
+          </div>
+
+          <div style="background: rgba(255,255,255,.03); padding: 12px; border-radius: 8px; border: 1px solid var(--border2);">
+            <div style="font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 8px;">Supplier</div>
+            <div style="font-size: 14px; color: #fff;">${escHtml(details.supplier_name || '—')}</div>
+          </div>
+        </div>
+        ${actionsHtml}
+        <div class="mobile-detail-spacer" aria-hidden="true"></div>
+      </div>
+    `;
+  } else if (details.type === 'packaging') {
+    actionsHtml = `
+      <div class="mobile-detail-actions">
+        <button class="btn btn-danger" type="button" onclick="deletePackagingPurchase(${Number(details.id)})">Delete Packaging Purchase</button>
+        <button class="btn" type="button" onclick="closeDetailModal(this)">Close</button>
+      </div>
+    `;
+    contentHtml = `
+      <div class="mobile-detail-panel">
+        <div class="mobile-detail-header">
+          <div>
+            <div style="font-size: 12px; color: var(--muted);">PACKAGING PURCHASE</div>
+            <div style="font-size: 16px; color: #fff; font-weight: 600;">${escHtml(details.product_name)}</div>
+          </div>
+          <button class="mobile-detail-close" onclick="closeDetailModal(this)">✖</button>
+        </div>
+        ${heroHtml}
+
+        <div style="display: grid; gap: 12px;">
+          <div style="background: rgba(255,255,255,.03); padding: 12px; border-radius: 8px; border: 1px solid var(--border2);">
+            <div style="font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 8px;">Date</div>
+            <div style="font-size: 14px; color: #fff; font-family: var(--mono);">${details.purchase_date}</div>
+          </div>
+
+          <div style="background: rgba(255,255,255,.03); padding: 12px; border-radius: 8px; border: 1px solid var(--border2);">
+            <div style="font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 8px;">Categories</div>
+            <div style="font-size: 14px; color: #fff;">${escHtml(details.categories)}</div>
+          </div>
+          
+          <div style="background: rgba(255,255,255,.03); padding: 12px; border-radius: 8px; border: 1px solid var(--border2);">
+            <div style="font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 8px;">Quantity</div>
+            <div style="font-size: 14px; color: #fff;">${details.qty} units</div>
+          </div>
+
+          <div style="background: rgba(255,255,255,.03); padding: 12px; border-radius: 8px; border: 1px solid var(--border2);">
+            <div style="font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 8px;">Unit Price</div>
+            <div style="font-size: 14px; color: #fff; font-family: var(--mono);">RM ${Number(details.unit_cost).toFixed(2)}</div>
+          </div>
+
+          <div style="background: rgba(245,158,11,.1); padding: 12px; border-radius: 8px; border: 1px solid rgba(245,158,11,.3);">
+            <div style="font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 8px;">Total Amount</div>
+            <div style="font-size: 18px; color: var(--amber); font-weight: 700; font-family: var(--mono);">RM ${Number(details.total_cost).toFixed(2)}</div>
+          </div>
+
+          <div style="background: rgba(255,255,255,.03); padding: 12px; border-radius: 8px; border: 1px solid var(--border2);">
+            <div style="font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 8px;">Supplier</div>
+            <div style="font-size: 14px; color: #fff;">${escHtml(details.supplier_name || '—')}</div>
+          </div>
+        </div>
+        ${actionsHtml}
+        <div class="mobile-detail-spacer" aria-hidden="true"></div>
+      </div>
+    `;
+  } else if (details.type === 'offsale') {
+    actionsHtml = `
+      <div class="mobile-detail-actions">
+        <button class="btn btn-ok" type="button" onclick="closeDetailModal(this); openGenerateInvoiceModal(${Number(details.id)})">Invoice</button>
+        <button class="btn" type="button" onclick="closeDetailModal(this); openGenerateReceiptModal(${Number(details.id)})">Receipt</button>
+      </div>
+    `;
+    contentHtml = `
+      <div class="mobile-detail-panel">
+        <div class="mobile-detail-header">
+          <div>
+            <div style="font-size: 12px; color: var(--muted);">OFF-PLATFORM SALE</div>
+            <div style="font-size: 16px; color: #fff; font-weight: 600;">${escHtml(details.sold_to)}</div>
+          </div>
+          <button class="mobile-detail-close" onclick="closeDetailModal(this)">✖</button>
+        </div>
+        ${heroHtml}
+
+        <div style="display: grid; gap: 12px;">
+          <div style="background: rgba(255,255,255,.03); padding: 12px; border-radius: 8px; border: 1px solid var(--border2);">
+            <div style="font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 8px;">Sale Date</div>
+            <div style="font-size: 14px; color: #fff; font-family: var(--mono);">${details.sale_date}</div>
+          </div>
+
+          <div style="background: rgba(245,158,11,.1); padding: 12px; border-radius: 8px; border: 1px solid rgba(245,158,11,.3);">
+            <div style="font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 8px;">Total Amount</div>
+            <div style="font-size: 18px; color: var(--amber); font-weight: 700; font-family: var(--mono);">RM ${Number(details.total_amount).toFixed(2)}</div>
+          </div>
+
+          <div style="background: rgba(255,255,255,.03); padding: 12px; border-radius: 8px; border: 1px solid var(--border2);">
+            <div style="font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 8px;">Buyer</div>
+            <div style="font-size: 14px; color: #fff;">${escHtml(details.sold_to)}</div>
+          </div>
+
+          ${details.items_text ? `<div style="background: rgba(255,255,255,.03); padding: 12px; border-radius: 8px; border: 1px solid var(--border2);">
+            <div style="font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 8px;">Items</div>
+            <div style="font-size: 14px; color: #fff; line-height: 1.45;">${escHtml(details.items_text)}</div>
+          </div>` : ''}
+        </div>
+        ${actionsHtml}
+        <div class="mobile-detail-spacer" aria-hidden="true"></div>
+      </div>
+    `;
+  }
+  
+  modal.innerHTML = contentHtml;
+  modal.addEventListener('click', function(e) {
+    if (e.target === this) {
+      closeDetailModal(this);
+    }
+  });
+  
+  document.body.appendChild(modal);
+}
+
+function closeDetailModal(triggerEl) {
+  const modal = triggerEl && triggerEl.closest ? triggerEl.closest('.mobile-detail-modal') : document.querySelector('.mobile-detail-modal');
+  if (modal) modal.remove();
+  if (!document.querySelector('.mobile-detail-modal')) {
+    document.body.classList.remove('modal-open');
+  }
+}
+
+// â”€â”€ Submit purchase â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+async function submitPurchase(e) {
+  e.preventDefault();
+  const btn    = document.getElementById('submit-btn');
+  const status = document.getElementById('form-status');
+  btn.disabled = true;
+  btn.textContent = '⏳ Saving & pushing...';
+  status.textContent = '';
+
+  const fd = new FormData();
+  const selected = document.getElementById('f-product').value;
+  const unitCostRaw = (document.getElementById('f-cost')?.value || '').trim();
+  if (String(selected).startsWith('g:')) {
+    fd.append('group_id', String(selected).slice(2));
+  } else {
+    fd.append('product_id', selected);
+  }
+  const supplierContact = document.getElementById('f-supplier-contact').value;
+  if (supplierContact) fd.append('supplier_contact_id', supplierContact);
+  fd.append('purchase_date', document.getElementById('f-date').value);
+  fd.append('qty',           document.getElementById('f-qty').value);
+  if (!hasAtMostDecimals(unitCostRaw, 4)) {
+    showToast('Unit Cost supports up to 4 decimal places.', 'warn');
+    status.innerHTML = '<span style="color:var(--red)">✖ Unit Cost supports up to 4 decimal places.</span>';
+    btn.disabled = false;
+    btn.textContent = '💾 Save & Push Stock to Platforms';
+    return;
+  }
+  fd.append('unit_cost',     unitCostRaw);
+  fd.append('notes',         document.getElementById('f-notes').value);
+  fd.append('sync_stock', document.getElementById('f-sync-stock')?.checked ? 'true' : 'false');
+
+  const goodsCam = document.getElementById('f-photo-goods-cam');
+  const goodsLib = document.getElementById('f-photo-goods-lib');
+  const receiptCam = document.getElementById('f-photo-receipt-cam');
+  const receiptLib = document.getElementById('f-photo-receipt-lib');
+  const photoGoods = (goodsCam && goodsCam.files[0]) || (goodsLib && goodsLib.files[0]) || null;
+  const photoReceipt = (receiptCam && receiptCam.files[0]) || (receiptLib && receiptLib.files[0]) || null;
+  if (photoGoods)   fd.append('photo_goods',   photoGoods);
+  if (photoReceipt) fd.append('photo_receipt', photoReceipt);
+
+  try {
+    const res  = await fetch(`${API}/api/financials/purchases`, { method: 'POST', body: fd });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || JSON.stringify(data));
+
+    // Show push notification
+    const pushSummary = buildPushSummary(data.push_results);
+    showToast(`✓ Recorded ${data.batch.qty} × ${data.batch.product_name}\nNew stock: ${data.new_stock}\n${pushSummary}`, 'ok');
+    status.innerHTML = `<span style="color:var(--green)">✓ Saved. New stock = ${data.new_stock}. ${pushSummary}</span>`;
+
+    // Reset form (keep date)
+    document.getElementById('f-product').value = '';
+  renderSelectedPlatformHint('');
+    document.getElementById('f-qty').value     = '';
+    document.getElementById('f-cost').value    = '';
+    document.getElementById('f-total').value   = '';
+    document.getElementById('f-supplier-contact').value = '';
+    const syncCk = document.getElementById('f-sync-stock');
+    if (syncCk) syncCk.checked = true;
+    document.getElementById('f-notes').value    = '';
+    clearPhoto('goods');
+    clearPhoto('receipt');
+
+    loadPurchases();
+  } catch(err) {
+    showToast(`✖ ${err.message}`, 'err');
+    status.innerHTML = `<span style="color:var(--red)">✖ ${err.message}</span>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '💾 Save & Push Stock to Platforms';
+  }
+}
+
+function buildPushSummary(results) {
+  if (!results) return '';
+  if (results.error) return `Push error: ${results.error}`;
+  const lines = Object.entries(results).map(([p, v]) =>
+    `${p}: ${v === 'ok' ? '✓' : v}`
+  );
+  return lines.join('  ');
+}
+
+// â”€â”€ Load purchases table â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+async function loadPurchases(resetPage = false) {
+  if (resetPage) _offset = 0;
+  const pid = document.getElementById('filter-product').value;
+  let url = `${API}/api/financials/purchases?limit=${PAGE}&offset=${_offset}`;
+  if (pid) {
+    if (String(pid).startsWith('g:')) url += `&group_id=${String(pid).slice(2)}`;
+    else url += `&product_id=${pid}`;
+  }
+
+  try {
+    const res  = await fetch(url);
+    const data = await res.json();
+    renderTable(data.items || []);
+    renderPagination(data.total || 0);
+  } catch(e) {
+    document.getElementById('purchases-tbody').innerHTML =
+      `<tr><td colspan="9" class="empty" style="color:var(--red)">Failed to load</td></tr>`;
+  }
+}
+
+function renderTable(items) {
+  const tbody = document.getElementById('purchases-tbody');
+  if (!items.length) {
+    tbody.innerHTML = `<tr><td class="empty" colspan="1">No purchases recorded yet.</td></tr>`;
+    return;
+  }
+  
+  const isMobile = window.matchMedia('(max-width: 860px)').matches;
+  
+  if (isMobile) {
+    tbody.innerHTML = items.map(b => {
+      const firstPhoto = b.photo_goods || b.photo_receipt;
+      const photoSrc = firstPhoto ? `${API}/api/financials/purchases/photo/${firstPhoto}` : null;
+      const badgesHtml = buildPlatformBadges(b.push_results);
+      
+      return `<tr data-record-id="${b.id}" data-record-type="purchase" data-product-name="${escAttr(b.product_name)}" data-record-date="${escAttr(b.purchase_date)}" data-qty="${escAttr(b.qty)}" data-unit-cost="${escAttr(b.unit_cost)}" data-total-cost="${escAttr(b.total_cost)}" data-supplier-name="${escAttr(b.supplier_name || '')}" data-photo-src="${escAttr(photoSrc || '')}">
+        <td style="position: relative; padding: 0; display: flex; flex-direction: column; width: 100%;">
+          <div class="mobile-card-header" style="position: relative; align-items: flex-start;">
+            ${photoSrc ? `<img src="${photoSrc}" class="mobile-card-thumbnail" alt="Product">` : `<div class="mobile-card-thumbnail" style="background: var(--surface); display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 24px;">📦</div>`}
+                  <div class="mobile-card-main">
+                    <div class="mobile-card-title">${escHtml(b.product_name)}</div>
+                    <div style="font-size:12px;color:var(--muted);line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(b.supplier_name || '—')}</div>
+                    <div class="mobile-card-date">📅 ${b.purchase_date}</div>
+                  </div>
+            <div class="mobile-card-meta">
+              <div class="mobile-card-meta-top">
+                <div class="mobile-card-amount">RM ${(b.total_cost||0).toFixed(2)}</div>
+              </div>
+              <div style="font-size:11px;color:var(--muted);font-family:var(--mono);">RM ${(b.unit_cost || 0).toFixed(2)}/unit</div>
+            </div>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+    bindMobileCardInteractions('purchases-tbody');
+  } else {
+    // Desktop view - keep original table layout
+    tbody.innerHTML = items.map(b => {
+      const pushChips = buildPushChips(b.push_results);
+      const photos    = [
+        b.photo_goods   ? `<img class="thumb" src="${API}/api/financials/purchases/photo/${b.photo_goods}"   onclick="openLightbox(this.src)" title="Goods photo">` : '',
+        b.photo_receipt ? `<img class="thumb" src="${API}/api/financials/purchases/photo/${b.photo_receipt}" onclick="openLightbox(this.src)" title="Receipt photo">` : '',
+      ].filter(Boolean).join(' ') || '<span style="color:var(--muted);font-size:11px">—</span>';
+
+      return `<tr>
+        <td class="cell-date" style="font-family:var(--mono);font-size:12px;white-space:nowrap;">${b.purchase_date}</td>
+        <td class="cell-product">${escHtml(b.product_name)}</td>
+        <td class="right cell-qty" style="font-family:var(--mono);">${b.qty}</td>
+        <td class="right cell-unit" style="font-family:var(--mono);">RM ${(b.unit_cost||0).toFixed(2)}</td>
+        <td class="right cell-total" style="font-family:var(--mono);color:var(--amber);">RM ${(b.total_cost||0).toFixed(2)}</td>
+        <td class="cell-supplier" style="font-size:12px;color:var(--muted);">${escHtml(b.supplier_name||'—')}</td>
+        <td class="cell-photos">${photos}</td>
+        <td class="cell-push">${pushChips}</td>
+        <td class="cell-actions"><button class="btn btn-danger" style="font-size:11px;padding:3px 8px;" onclick="deletePurchase(${b.id})">Delete</button></td>
+      </tr>`;
+    }).join('');
+  }
+}
+
+function buildPushChips(results) {
+  if (!results) return '<span class="badge badge-pend">pending</span>';
+  if (results.error) return `<span class="badge badge-err" title="${escHtml(results.error)}">error</span>`;
+  return `<div class="push-chips">${
+    Object.entries(results).map(([p, v]) =>
+      `<span class="chip ${v === 'ok' ? 'chip-ok' : 'chip-err'}">${p}:${v === 'ok' ? '✓' : '✖'}</span>`
+    ).join('')
+  }</div>`;
+}
+
+function buildPlatformBadges(results) {
+  if (!results) return '<span class="mobile-badge" style="background: rgba(245,158,11,.15); color: var(--amber);">⏳ pending</span>';
+  if (results.error) return `<span class="mobile-badge mobile-badge-error">✖ error</span>`;
+  return Object.entries(results).map(([platform, status]) => {
+    const isSuccess = status === 'ok';
+    const label = platformLabel(platform);
+    return `<span class="mobile-badge ${isSuccess ? 'mobile-badge-success' : 'mobile-badge-error'}">${label} ${isSuccess ? '✓' : '✖'}</span>`;
+  }).join('');
+}
+
+function toggleCardExpansion(e, cardElement) {
+  if (e.target.classList.contains('mobile-card-btn') || e.target.closest('.mobile-card-btn')) return;
+  if (e.target.tagName === 'BUTTON') return;
+  
+  const allCards = cardElement.closest('tbody').querySelectorAll('tr');
+  allCards.forEach(card => {
+    if (card !== cardElement) {
+      card.classList.remove('expanded');
+    }
+  });
+  
+  cardElement.classList.toggle('expanded');
+}
+
+function viewPurchaseDetail(e, recordId, productName, date, qty, unitCost, total, supplier, photoSrc = '') {
+  if (e && e.stopPropagation) e.stopPropagation();
+  const details = {
+    id: recordId,
+    type: 'purchase',
+    product_name: decodeURIComponent(productName),
+    purchase_date: date,
+    qty: qty,
+    unit_cost: unitCost,
+    total_cost: total,
+    supplier_name: decodeURIComponent(supplier),
+    photo_src: photoSrc,
+  };
+  showDetailModal(details);
+}
+
+function viewPackagingDetail(e, recordId, productName, date, qty, unitCost, total, supplier, categories, photoSrc = '') {
+  if (e && e.stopPropagation) e.stopPropagation();
+  const details = {
+    id: recordId,
+    type: 'packaging',
+    product_name: decodeURIComponent(productName),
+    purchase_date: date,
+    qty: qty,
+    unit_cost: unitCost,
+    total_cost: total,
+    supplier_name: decodeURIComponent(supplier),
+    categories: decodeURIComponent(categories),
+    photo_src: photoSrc,
+  };
+  showDetailModal(details);
+}
+
+function viewOffSaleDetail(e, recordId, buyer, date, amount, photoSrc = '', itemsText = '') {
+  if (e && e.stopPropagation) e.stopPropagation();
+  const details = {
+    id: recordId,
+    type: 'offsale',
+    sold_to: decodeURIComponent(buyer),
+    sale_date: date,
+    total_amount: amount,
+    photo_src: photoSrc,
+    items_text: itemsText,
+  };
+  showDetailModal(details);
+}
+
+function renderPagination(total) {
+  const pag = document.getElementById('pagination');
+  const pages = Math.ceil(total / PAGE);
+  const cur   = Math.floor(_offset / PAGE) + 1;
+  if (pages <= 1) { pag.innerHTML = `<span>${total} record${total !== 1 ? 's' : ''}</span>`; return; }
+  pag.innerHTML = `
+    <span>${total} records</span>
+    <button class="btn" style="font-size:11px;padding:3px 8px;" onclick="changePage(-1)" ${cur <= 1 ? 'disabled' : ''}>â€¹ Prev</button>
+    <span>Page ${cur} / ${pages}</span>
+    <button class="btn" style="font-size:11px;padding:3px 8px;" onclick="changePage(1)" ${cur >= pages ? 'disabled' : ''}>Next â€º</button>
+  `;
+}
+
+function changePage(dir) {
+  _offset = Math.max(0, _offset + dir * PAGE);
+  loadPurchases();
+}
+
+// â”€â”€ Off-platform sale form â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+// Default remarks for invoices and receipts
+const DEFAULT_INVOICE_REMARKS = '- All payment are payable to Manzill Globe Trading.\n- All cheques should cross and made payable to Manzill Globe Trading\n- Goods sold are non-returnable and non-refundable\n- Account No : 564146655089 (MAYBANK)\n-  Address of Bank : MAYBANK RIVERCITY JALAN IPOH';
+const DEFAULT_RECEIPT_REMARKS = '- Payment received with thanks.\n- This receipt acknowledges the amount received from the payer stated above.\n- Please retain this receipt for your records.';
+
+function offSaleProductOptions(selected = '') {
+  const selectedVal = String(selected || '');
+  let out = '<option value="">-- product/group --</option>';
+
+  if ((_groups || []).length) {
+    out += '<option value="" disabled>--- Groups ---</option>';
+    (_groups || []).forEach(g => {
+      const gv = `g:${g.id}`;
+      const gPlatforms = collectGroupPlatforms(g).map(platformCode).join('|') || 'NA';
+      const sel = selectedVal === gv ? 'selected' : '';
+      out += `<option value="${gv}" ${sel}>${escHtml(`[Group] ${g.display_name} [${gPlatforms}]`)}</option>`;
+
+      const members = [...(g.members || [])].sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+      members.forEach(m => {
+        const pv = String(m.id);
+        const codes = (m.listings || []).map(l => platformCode(l.platform)).join('|') || 'NA';
+        const det = platformDetails(m.listings, true);
+        const msel = selectedVal === pv ? 'selected' : '';
+        out += `<option value="${pv}" ${msel}>${escHtml(`  - ${m.name} [${codes}] (${det})`)}</option>`;
+      });
+    });
+  }
+
+  const groupedIds = new Set();
+  (_groups || []).forEach(g => (g.members || []).forEach(m => groupedIds.add(Number(m.id))));
+  const ungrouped = (_products || []).filter(p => !groupedIds.has(Number(p.id)));
+  if (ungrouped.length) out += '<option value="" disabled>--- Ungrouped Products ---</option>';
+  ungrouped.forEach(p => {
+    const pv = String(p.id);
+    const codes = (p.listings || []).map(l => platformCode(l.platform)).join('|') || 'NA';
+    const det = platformDetails(p.listings, true);
+    const sel = selectedVal === pv ? 'selected' : '';
+    out += `<option value="${pv}" ${sel}>${escHtml(`${p.name} [${codes}] (${det})`)}</option>`;
+  });
+
+  return out;
+}
+
+function addOffSaleLine(initial = null) {
+  const wrap = document.getElementById('off-lines');
+  const row = document.createElement('div');
+  row.className = 'off-line';
+  row.innerHTML = `
+    <select class="form-control off-product" required>
+      <option value="">-- product --</option>
+      ${offSaleProductOptions(initial?.product_id || '')}
+    </select>
+    <input type="number" class="form-control off-qty" min="1" required placeholder="Qty" value="${initial?.qty || ''}">
+    <input type="number" class="form-control off-unit" min="0" step="0.01" required placeholder="Unit RM" value="${initial?.unit_price || ''}">
+    <div class="off-line-total">RM 0.00</div>
+    <button type="button" class="line-btn del" title="Remove line">✖</button>
+  `;
+
+  row.querySelector('.off-qty').addEventListener('input', recalcOffSaleTotals);
+  row.querySelector('.off-unit').addEventListener('input', recalcOffSaleTotals);
+  row.querySelector('.line-btn.del').addEventListener('click', () => {
+    row.remove();
+    if (!document.querySelectorAll('#off-lines .off-line').length) addOffSaleLine();
+    recalcOffSaleTotals();
+  });
+
+  wrap.appendChild(row);
+  recalcOffSaleTotals();
+}
+
+function initOffSaleForm() {
+  const totalInput = document.getElementById('off-total');
+  totalInput.dataset.manual = '0';
+  totalInput.addEventListener('input', () => {
+    totalInput.dataset.manual = '1';
+  });
+
+  document.getElementById('off-lines').innerHTML = '';
+  addOffSaleLine();
+}
+
+function recalcOffSaleTotals() {
+  const rows = Array.from(document.querySelectorAll('#off-lines .off-line'));
+  let total = 0;
+
+  rows.forEach(r => {
+    const qty = parseFloat(r.querySelector('.off-qty').value) || 0;
+    const unit = parseFloat(r.querySelector('.off-unit').value) || 0;
+    const line = qty * unit;
+    total += line;
+    r.querySelector('.off-line-total').textContent = `RM ${line.toFixed(2)}`;
+  });
+
+  const totalInput = document.getElementById('off-total');
+  if (totalInput.dataset.manual !== '1' || !totalInput.value) {
+    totalInput.value = total.toFixed(2);
+  }
+}
+
+function collectOffSaleItems() {
+  const rows = Array.from(document.querySelectorAll('#off-lines .off-line'));
+  const items = [];
+  for (const r of rows) {
+    const selected = String(r.querySelector('.off-product').value || '');
+    const qty = Number(r.querySelector('.off-qty').value || 0);
+    const unit = Number(r.querySelector('.off-unit').value || 0);
+    if (!selected || qty <= 0 || unit < 0) {
+      throw new Error('Please complete all sale lines with valid product, qty, and unit price.');
+    }
+    if (selected.startsWith('g:')) {
+      items.push({ group_id: Number(selected.slice(2)), qty, unit_price: unit });
+    } else {
+      items.push({ product_id: Number(selected), qty, unit_price: unit });
+    }
+  }
+  if (!items.length) throw new Error('At least one product is required.');
+  return items;
+}
+
+async function submitOffSale(e) {
+  e.preventDefault();
+  const btn = document.getElementById('off-submit-btn');
+  const status = document.getElementById('off-form-status');
+  btn.disabled = true;
+  btn.textContent = 'â³ Saving...';
+  status.textContent = '';
+
+  try {
+    const items = collectOffSaleItems();
+    const fd = new FormData();
+    fd.append('sale_date', document.getElementById('off-date').value);
+    const buyerContact = document.getElementById('off-buyer-contact').value;
+    if (!buyerContact) throw new Error('Please select a buyer contact.');
+    fd.append('buyer_contact_id', buyerContact);
+    fd.append('total_amount', document.getElementById('off-total').value || '0');
+    fd.append('notes', document.getElementById('off-notes').value);
+    fd.append('sync_stock', document.getElementById('off-sync-stock')?.checked ? 'true' : 'false');
+    fd.append('items_json', JSON.stringify(items));
+    const photo = document.getElementById('off-photo').files[0];
+    if (photo) fd.append('photo', photo);
+
+    const res = await fetch(`${API}/api/financials/off-platform-sales`, { method: 'POST', body: fd });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || JSON.stringify(data));
+
+    showToast(`✓ Off-platform sale saved (${data.sale.items.length} item line(s))`, 'ok');
+    status.innerHTML = `<span style="color:var(--green)">✓ Saved. Total RM ${(data.sale.total_amount || 0).toFixed(2)}</span>`;
+
+    document.getElementById('off-buyer-contact').value = '';
+    document.getElementById('off-total').value = '';
+    document.getElementById('off-total').dataset.manual = '0';
+    document.getElementById('off-notes').value = '';
+    const offSync = document.getElementById('off-sync-stock');
+    if (offSync) offSync.checked = true;
+    document.getElementById('off-photo').value = '';
+    const prev = document.getElementById('prev-offsale');
+    prev.src = '';
+    prev.style.display = 'none';
+    const lbl = document.querySelector('#zone-offsale .photo-zone-label');
+    if (lbl) lbl.style.display = '';
+
+    document.getElementById('off-lines').innerHTML = '';
+    addOffSaleLine();
+
+    _offSales = [data.sale, ...(_offSales || []).filter(s => Number(s.id) !== Number(data.sale.id))];
+    renderOffSalesTable(_offSales);
+    loadOffSales();
+    loadPurchases();
+  } catch (err) {
+    showToast(`✖ ${err.message}`, 'err');
+    status.innerHTML = `<span style="color:var(--red)">✖ ${escHtml(err.message)}</span>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '💾 Save Off-Platform Sale';
+  }
+}
+
+async function loadOffSales() {
+  try {
+    const res = await fetch(`${API}/api/financials/off-platform-sales?limit=50&offset=0`);
+    const data = await res.json();
+    _offSales = data.items || [];
+    renderOffSalesTable(_offSales);
+  } catch (e) {
+    document.getElementById('offsales-tbody').innerHTML =
+      `<tr><td colspan="6" class="empty" style="color:var(--red)">Failed to load</td></tr>`;
+  }
+}
+
+function renderOffSalesTable(items) {
+  const tbody = document.getElementById('offsales-tbody');
+  if (!items.length) {
+    tbody.innerHTML = `<tr><td class="empty" colspan="1">No off-platform sales recorded yet.</td></tr>`;
+    return;
+  }
+
+  const isMobile = window.matchMedia('(max-width: 860px)').matches;
+
+  if (isMobile) {
+    tbody.innerHTML = items.map(s => {
+      const itemText = (s.items || [])
+        .map(i => `${escHtml(i.product_name)} x${i.qty}`)
+        .join(', ');
+      const firstName = (s.items && s.items.length) ? escHtml(s.items[0].product_name) : escHtml(s.sold_to || '—');
+      const photoSrc = s.photo ? `${API}/api/financials/purchases/photo/${s.photo}` : null;
+
+      return `<tr data-record-id="${s.id}" data-record-type="offsale" data-sold-to="${escAttr(s.sold_to || '—')}" data-record-date="${escAttr(s.sale_date)}" data-total-cost="${escAttr(s.total_amount || 0)}" data-photo-src="${escAttr(photoSrc || '')}" data-items-text="${escAttr((s.items || []).map(i => `${i.product_name} x${i.qty} @ RM ${(i.unit_price || 0).toFixed(2)}`).join(' | '))}">
+        <td style="position: relative; padding: 0; display: flex; flex-direction: column; width: 100%;">
+          <div class="mobile-card-header" style="position: relative; align-items: flex-start;">
+            ${photoSrc ? `<img src="${photoSrc}" class="mobile-card-thumbnail" alt="Sale">` : `<div class="mobile-card-thumbnail" style="background: var(--surface); display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 24px;">🛒</div>`}
+            <div class="mobile-card-main">
+              <div class="mobile-card-title">${firstName}</div>
+              <div style="font-size:12px;color:var(--muted);line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(s.sold_to || '—')}</div>
+              <div class="mobile-card-date">📅 ${s.sale_date}</div>
+            </div>
+            <div class="mobile-card-meta">
+              <div class="mobile-card-meta-top">
+                <div class="mobile-card-amount">RM ${(s.total_amount || 0).toFixed(2)}</div>
+              </div>
+            </div>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+    bindMobileCardInteractions('offsales-tbody');
+  } else {
+    // Desktop view
+    tbody.innerHTML = items.map(s => {
+      const itemText = (s.items || [])
+        .map(i => `${escHtml(i.product_name)} x${i.qty} @ RM ${(i.unit_price || 0).toFixed(2)}`)
+        .join('<br>');
+      const photo = s.photo
+        ? `<img class="thumb" src="${API}/api/financials/purchases/photo/${s.photo}" onclick="openLightbox(this.src)" title="Off-platform sale photo">`
+        : '<span style="color:var(--muted);font-size:11px">—</span>';
+
+      return `<tr>
+        <td class="cell-date" style="font-family:var(--mono);font-size:12px;white-space:nowrap;">${s.sale_date}</td>
+        <td class="cell-soldto">${escHtml(s.sold_to || '—')}</td>
+        <td class="cell-items" style="font-size:12px;line-height:1.4;">${itemText || '<span style="color:var(--muted)">—</span>'}</td>
+        <td class="right cell-total" style="font-family:var(--mono);color:var(--amber);">RM ${(s.total_amount || 0).toFixed(2)}</td>
+        <td class="cell-photo">${photo}</td>
+        <td class="cell-actions" style="white-space:nowrap;">
+          <button class="btn" style="font-size:11px;padding:3px 8px;" onclick="openGenerateInvoiceModal(${s.id})">Invoice</button>
+          <button class="btn" style="font-size:11px;padding:3px 8px;" onclick="openGenerateReceiptModal(${s.id})">Receipt</button>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+}
+
+// â”€â”€ Delete â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+async function deletePurchase(id) {
+  if (!confirm('Delete this purchase record? This does NOT reverse the stock push.')) return;
+  const res = await fetch(`${API}/api/financials/purchases/${id}`, { method: 'DELETE' });
+  if (res.ok) { showToast('Record deleted', 'ok'); closeDetailModal(); loadPurchases(); }
+  else showToast('Delete failed', 'err');
+}
+
+// â”€â”€ Lightbox â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+function openLightbox(src) {
+  document.getElementById('lightbox-img').src = src;
+  const lb = document.getElementById('lightbox');
+  lb.style.display = 'flex';
+}
+function closeLightbox() {
+  document.getElementById('lightbox').style.display = 'none';
+}
+
+// â”€â”€ Toast â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+let _toastTimer;
+function showToast(msg, type = 'ok') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className   = `show ${type}`;
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => t.className = '', 5000);
+}
+
+// â”€â”€ Util â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+function escHtml(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function escAttr(s) {
+  return String(s || '')
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function applyMobileLargeText() {
+  if (window.matchMedia('(max-width: 768px)').matches) {
+    document.body.classList.add('large-text');
+  }
+}
+
+applyMobileLargeText();
+
+let _lastCreatedInvoice = null;
+
+function openInvoiceSuccessModal(invoiceData) {
+  _lastCreatedInvoice = invoiceData;
+  const sale = _offSales.find(s => s.id === _currentOffSaleId);
+  
+  const docType = invoiceData.doc_type === 'receipt' ? 'Receipt' : 'Invoice';
+  document.getElementById('success-doc-type').textContent = docType;
+  document.getElementById('success-doc-number').textContent = invoiceData.invoice_number;
+  document.getElementById('success-buyer-name').textContent = sale?.sold_to || '—';
+  document.getElementById('success-amount').textContent = `RM ${(sale?.total_amount || 0).toFixed(2)}`;
+  document.getElementById('success-date').textContent = new Date().toISOString().slice(0, 10);
+  const recipientEl = document.getElementById('success-recipient-email');
+  if (recipientEl) recipientEl.value = '';
+  const emailStatus = document.getElementById('success-email-status');
+  if (emailStatus) emailStatus.textContent = '';
+  
+  openModal('invoice-success-modal');
+}
+
+function downloadInvoicePDF() {
+  if (!_lastCreatedInvoice) return;
+  const inv = _lastCreatedInvoice;
+  const viewType = inv.doc_type === 'receipt' ? 'receipt' : 'invoice';
+  // Open DocFlow page with matching document type and ID.
+  window.open(`/documents?view=${viewType}&id=${inv.id}`, '_blank');
+}
+
+function shareInvoice() {
+  if (!_lastCreatedInvoice) return;
+  const inv = _lastCreatedInvoice;
+  const viewType = inv.doc_type === 'receipt' ? 'receipt' : 'invoice';
+  const docLabel = inv.doc_type === 'receipt' ? 'Receipt' : 'Invoice';
+  const url = `${window.location.origin}/documents?view=${viewType}&id=${inv.id}`;
+  
+  if (navigator.share) {
+    navigator.share({
+      title: `${docLabel} ${inv.invoice_number}`,
+      text: `View ${docLabel} ${inv.invoice_number}`,
+      url: url,
+    }).catch(err => console.log('Share cancelled'));
+  } else {
+    // Fallback: copy to clipboard
+    const text = `${docLabel} ${inv.invoice_number}\n${url}`;
+    navigator.clipboard.writeText(text).then(() => {
+      showToast('Link copied to clipboard', 'ok');
+    }).catch(() => {
+      showToast('Could not copy to clipboard', 'err');
+    });
+  }
+}
+
+function _isLikelyEmailList(value) {
+  const entries = String(value || '').split(/[;,]/).map(x => x.trim()).filter(Boolean);
+  if (!entries.length) return false;
+  const re = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+  return entries.every(v => re.test(v));
+}
+
+async function sendInvoiceEmailFromSuccess(triggerBtn) {
+  if (!_lastCreatedInvoice || !_lastCreatedInvoice.id) {
+    showToast('No generated document found to send', 'err');
+    return;
+  }
+
+  const input = document.getElementById('success-recipient-email');
+  const status = document.getElementById('success-email-status');
+  let recipientEmail = (input?.value || '').trim();
+  if (!recipientEmail) {
+    const prompted = window.prompt('Enter recipient email (comma-separated for multiple):', '');
+    if (prompted === null) return;
+    recipientEmail = prompted.trim();
+    if (input) input.value = recipientEmail;
+  }
+  if (!recipientEmail) {
+    if (status) status.innerHTML = '<span style="color:var(--red);">Recipient email is required</span>';
+    return;
+  }
+  if (!_isLikelyEmailList(recipientEmail)) {
+    if (status) status.innerHTML = '<span style="color:var(--red);">Invalid email format (use comma for multiple)</span>';
+    return;
+  }
+
+  const btn = triggerBtn || document.getElementById('btn-success-send-email-primary') || document.getElementById('btn-success-send-email');
+  const originalLabel = btn ? btn.textContent : '✉️ Send Email';
+
+  try {
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = '⏳ Sending...';
+    }
+    if (status) status.innerHTML = '<span style="color:var(--muted);">Sending email...</span>';
+
+    const invoiceId = _lastCreatedInvoice.id;
+    const res = await fetch(`${API}/api/financials/invoices/${invoiceId}/email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recipient_email: recipientEmail }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.detail || `Failed to send email (${res.status})`);
+    }
+
+    const sentTo = Array.isArray(data.sent_to) ? data.sent_to.join(', ') : recipientEmail;
+    if (status) status.innerHTML = `<span style="color:var(--green);">✓ Email sent to: ${escHtml(sentTo)}</span>`;
+    showToast('✓ Email sent successfully', 'ok');
+  } catch (err) {
+    if (status) status.innerHTML = `<span style="color:var(--red);">✖ ${escHtml(err.message || String(err))}</span>`;
+    showToast(`✖ ${err.message || err}`, 'err');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = originalLabel;
+    }
+  }
+}
+
+// â”€â”€ Document Generation (DocFlow Integration) --------------------------------
+let _currentOffSaleId = null;
+
+function openGenerateInvoiceModal(offSaleId) {
+  _currentOffSaleId = offSaleId;
+  const sale = _offSales.find(s => s.id === offSaleId);
+  if (!sale) {
+    showToast('Sale record not found', 'err');
+    return;
+  }
+
+  const buyer = _buyerContacts.find(b => b.id === sale.buyer_contact_id);
+  const today = new Date().toISOString().slice(0, 10);
+  document.getElementById('gen-inv-date').value = today;
+  document.getElementById('gen-inv-due').value = '';
+  document.getElementById('gen-inv-buyer').value = sale.sold_to || '';
+  document.getElementById('gen-inv-company').value = buyer?.company_name || '';
+  document.getElementById('gen-inv-remarks').value = DEFAULT_INVOICE_REMARKS;
+  document.getElementById('gen-inv-number').value = '(auto-generated)';
+  document.getElementById('gen-inv-status').textContent = '';
+  
+  openModal('gen-invoice-modal');
+}
+
+function openGenerateReceiptModal(offSaleId) {
+  _currentOffSaleId = offSaleId;
+  const sale = _offSales.find(s => s.id === offSaleId);
+  if (!sale) {
+    showToast('Sale record not found', 'err');
+    return;
+  }
+
+  const buyer = _buyerContacts.find(b => b.id === sale.buyer_contact_id);
+  const today = new Date().toISOString().slice(0, 10);
+  document.getElementById('gen-receipt-date').value = today;
+  document.getElementById('gen-receipt-buyer').value = sale.sold_to || '';
+  document.getElementById('gen-receipt-company').value = buyer?.company_name || '';
+  document.getElementById('gen-receipt-remarks').value = DEFAULT_RECEIPT_REMARKS;
+  document.getElementById('gen-receipt-number').value = '(auto-generated)';
+  document.getElementById('gen-receipt-status').textContent = '';
+  
+  openModal('gen-receipt-modal');
+}
+
+async function submitGenerateInvoice(e) {
+  e.preventDefault();
+  const btn = e.target.querySelector('button[type=submit]');
+  const status = document.getElementById('gen-inv-status');
+  btn.disabled = true;
+  
+  try {
+    const sale = _offSales.find(s => s.id === _currentOffSaleId);
+    if (!sale) throw new Error('Sale record not found');
+
+    // Remove internal marker tokens from names before writing to customer docs.
+    const sanitizeDocItemName = (name) => String(name || '')
+      .replace(/\[\s*GROUP\s*\]/gi, '')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+
+    // Create line items from the sale items
+    const lineItems = (sale.items || []).map(item => ({
+      description: sanitizeDocItemName(item.product_name),
+      quantity: item.qty,
+      unit_price: item.unit_price,
+      line_total: item.qty * item.unit_price,
+    }));
+
+    const fd = new FormData();
+    fd.append('buyer_contact_id', sale.buyer_contact_id);
+    fd.append('invoice_date', document.getElementById('gen-inv-date').value);
+    const dueDate = document.getElementById('gen-inv-due').value;
+    if (dueDate) fd.append('due_date', dueDate);
+    fd.append('currency', 'MYR');
+    fd.append('tax_rate', '0.0');
+    fd.append('shipping_cost', '0.0');
+    fd.append('discount_amount', '0.0');
+    fd.append('buyer_name', document.getElementById('gen-inv-buyer').value || '');
+    fd.append('buyer_company_name', document.getElementById('gen-inv-company').value || '');
+    fd.append('remarks', document.getElementById('gen-inv-remarks').value);
+    fd.append('items_json', JSON.stringify(lineItems));
+    fd.append('reference_sale_id', _currentOffSaleId);
+
+    const res = await fetch(`${API}/api/financials/invoices`, {
+      method: 'POST',
+      body: fd,
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      const errMsg = typeof data.detail === 'string' ? data.detail : 
+                     Array.isArray(data.detail) ? data.detail.map(d => d.msg || d).join(', ') :
+                     'Failed to generate invoice';
+      throw new Error(errMsg);
+    }
+
+    // Show success modal with invoice details
+    closeModal('gen-invoice-modal');
+    openInvoiceSuccessModal({
+      id: data.id,
+      invoice_number: data.invoice_number,
+      doc_type: 'invoice',
+    });
+
+    if (data.existing) {
+      showToast(`ℹ️ Existing invoice loaded: ${data.invoice_number}`, 'ok');
+    }
+    
+    setTimeout(() => loadOffSales(), 2000);
+  } catch (err) {
+    status.innerHTML = `<span style="color:var(--red);">✖ ${escHtml(err.message)}</span>`;
+    showToast(`✖ ${err.message}`, 'err');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function submitGenerateReceipt(e) {
+  e.preventDefault();
+  const btn = e.target.querySelector('button[type=submit]');
+  const status = document.getElementById('gen-receipt-status');
+  btn.disabled = true;
+  
+  try {
+    const sale = _offSales.find(s => s.id === _currentOffSaleId);
+    if (!sale) throw new Error('Sale record not found');
+
+    // Remove internal marker tokens from names before writing to customer docs.
+    const sanitizeDocItemName = (name) => String(name || '')
+      .replace(/\[\s*GROUP\s*\]/gi, '')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+
+    // Create line items from the sale items
+    const lineItems = (sale.items || []).map(item => ({
+      description: sanitizeDocItemName(item.product_name),
+      quantity: item.qty,
+      unit_price: item.unit_price,
+      line_total: item.qty * item.unit_price,
+    }));
+
+    const fd = new FormData();
+    fd.append('buyer_contact_id', sale.buyer_contact_id);
+    fd.append('invoice_date', document.getElementById('gen-receipt-date').value);
+    fd.append('currency', 'MYR');
+    fd.append('tax_rate', '0.0');
+    fd.append('shipping_cost', '0.0');
+    fd.append('discount_amount', '0.0');
+    fd.append('buyer_name', document.getElementById('gen-receipt-buyer').value || '');
+    fd.append('buyer_company_name', document.getElementById('gen-receipt-company').value || '');
+    fd.append('remarks', document.getElementById('gen-receipt-remarks').value);
+    fd.append('items_json', JSON.stringify(lineItems));
+    fd.append('reference_sale_id', _currentOffSaleId);
+    fd.append('doc_type', 'receipt');
+
+    const res = await fetch(`${API}/api/financials/invoices`, {
+      method: 'POST',
+      body: fd,
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      const errMsg = typeof data.detail === 'string' ? data.detail : 
+                     Array.isArray(data.detail) ? data.detail.map(d => d.msg || d).join(', ') :
+                     'Failed to generate receipt';
+      throw new Error(errMsg);
+    }
+
+    // Show success modal with receipt details
+    closeModal('gen-receipt-modal');
+    openInvoiceSuccessModal({
+      id: data.id,
+      invoice_number: data.invoice_number,
+      doc_type: 'receipt',
+    });
+    
+    setTimeout(() => loadOffSales(), 2000);
+  } catch (err) {
+    status.innerHTML = `<span style="color:var(--red);">✖ ${escHtml(err.message)}</span>`;
+    showToast(`✖ ${err.message}`, 'err');
+  } finally {
+    btn.disabled = false;
+  }
+}
+</script>
+</body>
+</html>
+
+

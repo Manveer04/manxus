@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Inventory Sync Login</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #f5f3ee;
+    --ink: #131212;
+    --muted: #665f5c;
+    --card: #fffdf8;
+    --border: #d6cec7;
+    --accent: #0d7a5f;
+    --accent-2: #094f3e;
+    --danger: #b13d2f;
+    --ring: rgba(13, 122, 95, 0.26);
+    --shadow: 0 22px 46px rgba(20, 16, 13, 0.12);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: 'Space Grotesk', sans-serif;
+    color: var(--ink);
+    background:
+      radial-gradient(circle at 18% 10%, #f2d6a6 0%, rgba(242, 214, 166, 0) 44%),
+      radial-gradient(circle at 88% 88%, #c8e9df 0%, rgba(200, 233, 223, 0) 42%),
+      var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 22px;
+  }
+
+  .shell {
+    width: min(980px, 100%);
+    display: grid;
+    grid-template-columns: 1.1fr 1fr;
+    border: 1px solid var(--border);
+    border-radius: 22px;
+    overflow: hidden;
+    background: var(--card);
+    box-shadow: var(--shadow);
+  }
+
+  .hero {
+    padding: 44px;
+    background:
+      linear-gradient(160deg, #151412 0%, #242120 48%, #2f2620 100%);
+    color: #f9f4eb;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 20px;
+  }
+
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #cfbe8f;
+  }
+
+  .eyebrow::before {
+    content: '';
+    width: 26px;
+    height: 1px;
+    background: #cfbe8f;
+  }
+
+  h1 {
+    margin: 0;
+    font-size: clamp(32px, 5vw, 52px);
+    line-height: 0.98;
+    letter-spacing: -0.02em;
+  }
+
+  .hero p {
+    margin: 0;
+    color: #d8cfc3;
+    max-width: 28ch;
+    line-height: 1.5;
+  }
+
+  .metrics {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+
+  .metric {
+    border: 1px solid rgba(248, 237, 220, 0.2);
+    border-radius: 12px;
+    padding: 10px 12px;
+    min-width: 96px;
+  }
+
+  .metric .label {
+    display: block;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #c7bbad;
+  }
+
+  .metric .value {
+    font-size: 20px;
+    font-weight: 700;
+    margin-top: 4px;
+  }
+
+  .panel {
+    padding: 34px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .panel h2 {
+    margin: 0 0 8px;
+    font-size: 28px;
+    letter-spacing: -0.02em;
+  }
+
+  .panel .sub {
+    margin: 0 0 24px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  form {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .field label {
+    display: block;
+    font-size: 13px;
+    margin-bottom: 8px;
+    color: #423b37;
+    font-weight: 600;
+  }
+
+  .field input {
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: #ffffff;
+    padding: 12px 14px;
+    font: inherit;
+    transition: border-color .2s ease, box-shadow .2s ease;
+  }
+
+  .field input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 4px var(--ring);
+  }
+
+  .actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 4px;
+  }
+
+  .btn {
+    border: 0;
+    border-radius: 12px;
+    padding: 12px 16px;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+    color: #f6fffc;
+    flex: 1;
+  }
+
+  .btn-primary:hover {
+    filter: brightness(1.04);
+  }
+
+  .btn-secondary {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--ink);
+  }
+
+  .message {
+    min-height: 22px;
+    font-size: 14px;
+    margin-top: 10px;
+    color: var(--muted);
+  }
+
+  .message.error {
+    color: var(--danger);
+  }
+
+  .message.ok {
+    color: var(--accent-2);
+  }
+
+  .banner {
+    display: none;
+    margin: 0 0 14px;
+    border: 1px solid #d7b66f;
+    border-radius: 10px;
+    background: #fff5dc;
+    color: #5f4716;
+    font-size: 14px;
+    line-height: 1.4;
+    padding: 10px 12px;
+  }
+
+  .banner.show {
+    display: block;
+  }
+
+  .foot {
+    margin-top: 18px;
+    font-size: 12px;
+    color: #7a716d;
+  }
+
+  @media (max-width: 860px) {
+    body { padding: 14px; }
+    .shell {
+      grid-template-columns: 1fr;
+      border-radius: 18px;
+    }
+    .hero {
+      padding: 24px;
+      min-height: 220px;
+    }
+    .panel { padding: 24px; }
+    .actions {
+      flex-direction: column;
+    }
+  }
+</style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <div>
+        <span class="eyebrow">Manxus</span>
+        <h1>Secure Access</h1>
+        <p>All-in-one Manzill Globe's e-commerce platform</p>
+      </div>
+      <div class="metrics" aria-hidden="true">
+        <div class="metric"><span class="label">Platform</span><span class="value">3</span></div>
+        <div class="metric"><span class="label">Scope</span><span class="value">All APIs</span></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Log In</h2>
+      <p class="sub">Use your Manxus credentials to continue.</p>
+      <div class="banner" id="deviceReregisterBanner">This device was refreshed. Please log in to re-register it.</div>
+      <form id="loginForm" novalidate>
+        <div class="field">
+          <label for="username">Username</label>
+          <input id="username" name="username" type="text" autocomplete="username" required />
+        </div>
+        <div class="field">
+          <label for="password">Password</label>
+          <input id="password" name="password" type="password" autocomplete="current-password" required />
+        </div>
+        <div class="actions">
+          <button class="btn btn-primary" id="submitBtn" type="submit">Sign In</button>
+          <button class="btn btn-secondary" type="button" id="clearBtn">Clear</button>
+        </div>
+      </form>
+      <div class="message" id="message">Enter your credentials to continue.</div>
+    </section>
+  </main>
+
+<script>
+(function () {
+  const form = document.getElementById('loginForm');
+  const message = document.getElementById('message');
+  const submitBtn = document.getElementById('submitBtn');
+  const clearBtn = document.getElementById('clearBtn');
+  const username = document.getElementById('username');
+  const password = document.getElementById('password');
+
+  const params = new URLSearchParams(window.location.search);
+  const nextPath = sanitizeNext(params.get('next') || '/');
+  const forceDeviceReregister = params.get('device_re_register') === '1';
+  const devicePromptKey = 'invsync_device_prompt_seen_v1';
+  const deviceReregisterBanner = document.getElementById('deviceReregisterBanner');
+
+  if (forceDeviceReregister) {
+    deviceReregisterBanner.classList.add('show');
+  }
+
+  tryInstantDeviceLogin();
+
+  clearBtn.addEventListener('click', function () {
+    username.value = '';
+    password.value = '';
+    username.focus();
+    setMessage('Cleared.', 'ok');
+  });
+
+  form.addEventListener('submit', async function (event) {
+    event.preventDefault();
+    await handlePasswordLogin();
+  });
+
+  async function handlePasswordLogin() {
+    const userVal = username.value.trim();
+    const passVal = password.value;
+
+    if (!userVal || !passVal) {
+      setMessage('Username and password are required.', 'error');
+      return;
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Signing In...';
+    setMessage('Checking credentials...', '');
+
+    try {
+      const res = await fetch('/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ username: userVal, password: passVal, next: nextPath }),
+      });
+      const data = await res.json().catch(function () { return {}; });
+
+      if (!res.ok) {
+        throw new Error(data.detail || 'Login failed');
+      }
+
+      await maybeRegisterDeviceToken(forceDeviceReregister);
+      setMessage('Login successful. Redirecting...', 'ok');
+      window.location.href = sanitizeNext(data.redirect || nextPath);
+    } catch (err) {
+      setMessage(err && err.message ? err.message : 'Login failed', 'error');
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Sign In';
+    }
+  }
+
+  async function tryInstantDeviceLogin() {
+    setMessage('Checking saved device login...', '');
+    try {
+      const res = await fetch('/auth/device/bootstrap', {
+        method: 'GET',
+        credentials: 'same-origin',
+      });
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 429) {
+          setMessage('Enter your credentials to continue.', '');
+          return;
+        }
+        const data = await res.json().catch(function () { return {}; });
+        throw new Error(data.detail || 'Instant login failed');
+      }
+
+      const data = await res.json().catch(function () { return {}; });
+      setMessage('Instant login successful. Redirecting...', 'ok');
+      window.location.href = sanitizeNext(data.redirect || nextPath);
+    } catch (err) {
+      setMessage(err && err.message ? err.message : 'Enter your credentials to continue.', '');
+    }
+  }
+
+  async function maybeRegisterDeviceToken(forcePrompt) {
+    if (!forcePrompt && localStorage.getItem(devicePromptKey) === '1') {
+      return;
+    }
+
+    let status = null;
+    try {
+      const statusRes = await fetch('/auth/device/status', {
+        method: 'GET',
+        credentials: 'same-origin',
+      });
+      if (statusRes.ok) {
+        status = await statusRes.json();
+      }
+    } catch (err) {}
+
+    if (!forcePrompt && status && status.enabled) {
+      localStorage.setItem(devicePromptKey, '1');
+      return;
+    }
+
+    const enableNow = window.confirm('Do you want to enable instant login on this device?');
+    localStorage.setItem(devicePromptKey, '1');
+    if (!enableNow) {
+      return;
+    }
+
+    const token = generateDeviceToken();
+    const label = buildDeviceLabel();
+
+    const res = await fetch('/auth/device/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ token: token, device_label: label }),
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(function () { return {}; });
+      throw new Error(data.detail || 'Could not register this device for instant login');
+    }
+  }
+
+  function generateDeviceToken() {
+    const bytes = new Uint8Array(32);
+    window.crypto.getRandomValues(bytes);
+    return base64UrlEncode(bytes);
+  }
+
+  function base64UrlEncode(bytes) {
+    let binary = '';
+    for (let i = 0; i < bytes.length; i += 1) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+
+  function buildDeviceLabel() {
+    const platform = (navigator.platform || 'UnknownPlatform').replace(/\s+/g, ' ').trim();
+    const ua = navigator.userAgent || 'UnknownBrowser';
+    let browser = 'Browser';
+    if (ua.indexOf('Edg/') >= 0) browser = 'Edge';
+    else if (ua.indexOf('Chrome/') >= 0) browser = 'Chrome';
+    else if (ua.indexOf('Firefox/') >= 0) browser = 'Firefox';
+    else if (ua.indexOf('Safari/') >= 0) browser = 'Safari';
+    return `${browser} on ${platform}`.slice(0, 120);
+  }
+
+  function setMessage(text, type) {
+    message.textContent = text;
+    message.className = 'message' + (type ? ' ' + type : '');
+  }
+
+  function sanitizeNext(value) {
+    if (!value || typeof value !== 'string') return '/';
+    if (!value.startsWith('/') || value.startsWith('//')) return '/';
+    return value;
+  }
+})();
+</script>
+</body>
+</html>

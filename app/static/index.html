@@ -1,0 +1,1520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="theme-color" content="#0b0d10"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<link rel="manifest" href="/manifest.json"/>
+<title>InvSync</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Barlow+Condensed:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('/service-worker.js').catch(function () {});
+  });
+}
+</script>
+<style>
+:root {
+  --bg:#0b0d10; --s1:#13161b; --s2:#1a1f27; --b1:#242930; --b2:#2f3640;
+  --tx:#c6d0de; --mu:#4e5a6a; --ac:#d4f53c; --ac2:#a8c522;
+  --sh:#ee4d2d; --lz:#1a53f0; --tk:#25d4c8;
+  --er:#f03d3d; --wn:#f0a500; --ok:#3dca7a;
+  --mono:'IBM Plex Mono',monospace; --sans:'Barlow Condensed',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--tx);font-family:var(--sans);font-size:15px;height:100vh;overflow:hidden;display:flex;flex-direction:column}
+body::before{content:'';position:fixed;inset:0;background-image:repeating-linear-gradient(0deg,transparent,transparent 40px,rgba(255,255,255,.015) 40px,rgba(255,255,255,.015) 41px),repeating-linear-gradient(90deg,transparent,transparent 40px,rgba(255,255,255,.015) 40px,rgba(255,255,255,.015) 41px);pointer-events:none;z-index:0}
+
+/* Nav */
+nav{position:relative;z-index:10;display:flex;align-items:center;gap:4px;padding:0 20px;height:48px;background:var(--s1);border-bottom:1px solid var(--b1);flex-shrink:0}
+.nav-brand{font-family:var(--mono);font-size:13px;color:#fff;letter-spacing:.05em;margin-right:8px}
+.nav-brand span{color:var(--ac)}
+.nav-link{padding:5px 12px;border-radius:5px;font-size:13px;color:var(--mu);text-decoration:none;transition:.15s}
+.nav-link:hover{color:var(--tx);background:var(--b1)}
+.nav-link.active{color:#fff;background:var(--b2)}
+.nav-right{margin-left:auto;display:flex;align-items:center;gap:8px}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-icon{width:28px;height:28px;background:var(--ac);clip-path:polygon(0 0,100% 0,100% 70%,70% 100%,0 100%)}
+.logo-text{font-size:18px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#fff}.logo-text span{color:var(--ac)}
+.hdr-mid{display:flex;gap:6px}
+.plat-pill{display:flex;align-items:center;gap:5px;padding:5px 12px;border-radius:3px;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;border:1px solid var(--b2);cursor:pointer;transition:all .2s;background:var(--s2)}
+.plat-pill .dot{width:7px;height:7px;border-radius:50%;background:var(--mu)}
+.plat-pill.online .dot{background:var(--ok);box-shadow:0 0 6px var(--ok)}
+.plat-pill[data-p=shopee]{color:var(--sh);border-color:rgba(238,77,45,.2)}
+.plat-pill[data-p=lazada]{color:var(--lz);border-color:rgba(26,83,240,.2)}
+.plat-pill[data-p=tiktok]{color:var(--tk);border-color:rgba(37,212,200,.2)}
+.hdr-right{display:flex;gap:8px;align-items:center}
+
+/* Buttons */
+.btn{font-family:var(--sans);font-size:12px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;padding:7px 16px;border:1px solid var(--b2);border-radius:3px;cursor:pointer;background:var(--s2);color:var(--tx);transition:all .2s;white-space:nowrap}
+.btn:hover{background:var(--b2);color:#fff}
+.btn-ac{background:var(--ac);color:#0b0d10;border-color:var(--ac)}.btn-ac:hover{background:var(--ac2)}
+.btn-ok{color:var(--ok);border-color:rgba(61,202,122,.3)}.btn-ok:hover{background:rgba(61,202,122,.12)}
+.btn-er{color:var(--er);border-color:rgba(240,61,61,.3)}.btn-er:hover{background:rgba(240,61,61,.12)}
+.btn-ghost{background:none;border-color:transparent;color:var(--mu);padding:4px 8px}.btn-ghost:hover{color:var(--tx);background:var(--b1)}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+.spinner{display:inline-block;width:12px;height:12px;border:2px solid var(--b2);border-top-color:var(--ac);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Layout */
+.layout{position:relative;z-index:1;display:grid;grid-template-columns:1fr 260px;flex:1;overflow:hidden}
+.main{display:flex;flex-direction:column;overflow:hidden;padding:20px;gap:14px}
+.sidebar{border-left:1px solid var(--b1);background:var(--s1);display:flex;flex-direction:column;overflow:hidden}
+
+/* Stats */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;flex-shrink:0}
+.stat{background:var(--s1);border:1px solid var(--b1);padding:14px 16px;border-radius:4px;position:relative;overflow:hidden}
+.stat::after{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.stat.s-total::after{background:var(--ac)}.stat.s-groups::after{background:var(--tk)}.stat.s-oos::after{background:var(--wn)}.stat.s-low::after{background:var(--sh)}.stat.s-backorder::after{background:var(--er)}
+.stat-val{font-family:var(--mono);font-size:28px;font-weight:600;color:#fff;line-height:1}
+.stat-lbl{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--mu);margin-top:5px}
+
+/* Toolbar */
+.toolbar{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.search{flex:1;max-width:300px;background:var(--s1);border:1px solid var(--b2);border-radius:3px;display:flex;align-items:center;padding:0 10px}
+.search input{background:none;border:none;outline:none;color:var(--tx);font-family:var(--mono);font-size:12px;padding:7px 6px;width:100%}
+.search input::placeholder{color:var(--mu)}
+.view-tabs{display:flex;gap:4px}
+.tab{font-family:var(--sans);font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:6px 14px;border:1px solid var(--b1);border-radius:3px;cursor:pointer;background:var(--s2);color:var(--mu);transition:all .2s}
+.tab.active{background:var(--ac);color:#0b0d10;border-color:var(--ac)}
+
+/* Table */
+.tbl-wrap{background:var(--s1);border:1px solid var(--b1);border-radius:4px;overflow:auto;flex:1;min-height:0}
+table{width:100%;border-collapse:collapse}
+thead tr{position:sticky;top:0;z-index:2;background:var(--s2);border-bottom:1px solid var(--b2)}
+th{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--mu);padding:9px 14px;text-align:left;white-space:nowrap}
+tbody tr{border-bottom:1px solid var(--b1);transition:background .12s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:rgba(255,255,255,.022)}
+td{padding:10px 14px;vertical-align:middle}
+
+/* Product image */
+.pimg{width:38px;height:38px;border-radius:3px;object-fit:cover;border:1px solid var(--b2);cursor:pointer;display:block}
+.pimg-ph{width:38px;height:38px;border-radius:3px;background:var(--s2);border:1px dashed var(--b2);display:flex;align-items:center;justify-content:center;color:var(--mu);font-size:16px;cursor:pointer;transition:all .2s;flex-shrink:0}
+.pimg-ph:hover{border-color:var(--ac);color:var(--ac)}
+
+/* SKU chips */
+.sku-wrap{display:flex;flex-direction:column;gap:3px}
+.sku-chip{display:inline-flex;align-items:center;gap:4px;font-family:var(--mono);font-size:10px;padding:2px 6px;border-radius:2px;border:1px solid var(--b1);background:var(--bg);color:var(--mu);white-space:nowrap}
+.sku-chip .plat-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.sku-chip[data-p=shopee] .plat-dot{background:var(--sh)}
+.sku-chip[data-p=lazada] .plat-dot{background:var(--lz)}
+.sku-chip[data-p=tiktok] .plat-dot{background:var(--tk)}
+.sku-chip[data-p=shopee_sg] .plat-dot{background:var(--sh);opacity:.6}
+.plat-stock .ps-sg{font-size:8px;font-weight:700;letter-spacing:1px;color:var(--mu);text-transform:uppercase}
+.plat-stock .ps-split{display:flex;gap:8px;justify-content:center;align-items:flex-start;margin-top:2px}
+.plat-stock .ps-split-divider{width:1px;background:var(--b2);align-self:stretch}
+.suggest-card{background:var(--bg);border:1px solid var(--b1);border-radius:4px;padding:12px;margin-bottom:10px;transition:opacity .3s}
+.suggest-card.accepted{opacity:.35;pointer-events:none}
+.sug-prod{background:var(--b1);border-radius:3px;padding:6px 10px;min-width:110px;max-width:220px}
+
+/* Product name */
+.pname{font-size:14px;font-weight:600;color:#e8f0f8;line-height:1.3;cursor:pointer}
+.pname:hover{color:var(--ac)}
+.pname-input{font-family:var(--sans);font-size:14px;font-weight:600;color:#e8f0f8;background:rgba(212,245,60,.06);border:1px solid rgba(212,245,60,.3);border-radius:3px;padding:3px 8px;outline:none;width:100%}
+.pname-input:focus{border-color:var(--ac)}
+.pname-sub{font-size:11px;color:var(--mu);margin-top:2px}
+
+/* Platform stock cells */
+.plat-stocks{display:flex;gap:5px}
+.plat-stock{min-width:70px;padding:6px 10px;border-radius:3px;border:1px solid var(--b1);background:var(--bg);text-align:center;transition:all .2s}
+.plat-stock.active{border-color:var(--b2)}
+.plat-stock.inactive{opacity:.22}
+.plat-stock .ps-label{font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase}
+.plat-stock .ps-val{font-family:var(--mono);font-size:16px;font-weight:600;margin-top:1px;line-height:1}
+.plat-stock[data-p=shopee] .ps-label{color:var(--sh)}
+.plat-stock[data-p=lazada] .ps-label{color:var(--lz)}
+.plat-stock[data-p=tiktok] .ps-label{color:var(--tk)}
+.plat-stock[data-p=shopee].active{border-color:rgba(238,77,45,.35);background:rgba(238,77,45,.05)}
+.plat-stock[data-p=lazada].active{border-color:rgba(26,83,240,.35);background:rgba(26,83,240,.05)}
+.plat-stock[data-p=tiktok].active{border-color:rgba(37,212,200,.35);background:rgba(37,212,200,.05)}
+.plat-stock.db-only{border-color:rgba(124,198,255,.45)!important;background:rgba(124,198,255,.09)!important}
+.ps-val.db-only{color:#7cc6ff}
+.ps-val.zero{color:var(--er)}.ps-val.low{color:var(--wn)}
+
+/* Master stock */
+.master-stock{font-family:var(--mono);font-size:22px;font-weight:600;color:#fff;text-align:center;cursor:pointer;border-radius:3px;padding:2px 6px;transition:all .2s}
+.master-stock:hover{background:rgba(212,245,60,.08);color:var(--ac)}
+.master-stock.zero{color:var(--er)}.master-stock.low{color:var(--wn)}.master-stock.backorder{color:var(--er);font-size:14px}
+.master-stock-input{font-family:var(--mono);font-size:20px;font-weight:600;color:#fff;background:rgba(212,245,60,.08);border:1px solid var(--ac);border-radius:3px;padding:2px 8px;outline:none;width:70px;text-align:center}
+
+/* Group badge */
+.group-badge{font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;padding:2px 7px;border-radius:2px;background:rgba(37,212,200,.1);color:var(--tk);border:1px solid rgba(37,212,200,.2)}
+.ungrouped-badge{font-size:9px;font-weight:700;letter-spacing:1px;padding:2px 7px;border-radius:2px;background:rgba(255,255,255,.04);color:var(--mu);border:1px solid var(--b1)}
+.bo-badge{font-size:11px;font-weight:800;letter-spacing:1.2px;padding:4px 9px;border-radius:3px;background:rgba(240,61,61,.28);color:var(--er);border:1.5px solid rgba(240,61,61,.6);margin-left:6px;box-shadow:0 0 8px rgba(240,61,61,.2);text-transform:uppercase}
+
+/* Row actions */
+.row-actions{display:flex;gap:5px;align-items:center}
+
+/* Sidebar */
+.side-hdr{padding:14px 18px;border-bottom:1px solid var(--b1);font-size:10px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:var(--mu);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.log-list{flex:1;overflow-y:auto;min-height:0}
+.log-item{padding:9px 18px;border-bottom:1px solid rgba(255,255,255,.03);display:grid;grid-template-columns:auto 1fr;gap:8px;align-items:start}
+.log-act{font-size:9px;font-weight:700;letter-spacing:1px;padding:2px 6px;border-radius:2px;text-transform:uppercase;white-space:nowrap}
+.log-act.read{background:rgba(37,212,200,.1);color:var(--tk)}
+.log-act.write{background:rgba(212,245,60,.1);color:var(--ac)}
+.log-act.error{background:rgba(240,61,61,.1);color:var(--er)}
+.log-body{min-width:0}
+.log-meta{font-family:var(--mono);font-size:10px;color:var(--mu)}
+.log-msg{font-size:11px;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+
+/* Modal */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:1000;align-items:center;justify-content:center}
+.overlay.open{display:flex}
+.modal{background:var(--s1);border:1px solid var(--b2);border-radius:6px;padding:28px;min-width:420px;max-width:560px;box-shadow:0 24px 64px rgba(0,0,0,.6)}
+.modal h2{font-size:17px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#fff;margin-bottom:20px}
+.field-label{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--mu);margin-bottom:5px;display:block}
+.field-input{width:100%;background:var(--bg);border:1px solid var(--b2);border-radius:3px;color:var(--tx);font-family:var(--mono);font-size:13px;padding:9px 11px;outline:none;margin-bottom:14px}
+.field-input:focus{border-color:var(--ac)}
+.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:6px}
+
+/* Group create panel: product picker */
+.product-picker{border:1px solid var(--b1);border-radius:3px;max-height:260px;overflow-y:auto;margin-bottom:14px}
+.picker-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid var(--b1);cursor:pointer;transition:background .12s}
+.picker-item:last-child{border-bottom:none}
+.picker-item:hover{background:rgba(255,255,255,.03)}
+.picker-item.selected{background:rgba(212,245,60,.06)}
+.picker-item input[type=checkbox]{width:15px;height:15px;accent-color:var(--ac);cursor:pointer;flex-shrink:0}
+.picker-plats{display:flex;gap:3px;margin-left:auto;flex-shrink:0}
+.picker-plat{font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:1px 5px;border-radius:2px}
+.picker-plat.shopee{background:rgba(238,77,45,.15);color:var(--sh)}
+.picker-plat.lazada{background:rgba(26,83,240,.15);color:var(--lz)}
+.picker-plat.tiktok{background:rgba(37,212,200,.15);color:var(--tk)}
+
+/* Image drop */
+.img-drop{border:2px dashed var(--b2);border-radius:4px;padding:28px;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:14px}
+.img-drop:hover,.img-drop.drag{border-color:var(--ac);background:rgba(212,245,60,.04)}
+.img-preview{width:100%;max-height:160px;object-fit:contain;border-radius:4px;margin-bottom:10px;display:none}
+
+/* Toast */
+#toasts{position:fixed;bottom:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:7px}
+.toast{padding:11px 16px;background:var(--s2);border:1px solid var(--b2);border-left:3px solid var(--ac);border-radius:3px;font-size:12px;color:var(--tx);min-width:240px;animation:sin .3s ease;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.toast.err{border-left-color:var(--er)}.toast.warn{border-left-color:var(--wn)}
+@keyframes sin{from{transform:translateX(16px);opacity:0}to{transform:translateX(0);opacity:1}}
+
+/* Empty */
+.empty{text-align:center;padding:50px 20px;color:var(--mu)}
+.empty .ico{font-size:36px;opacity:.25;margin-bottom:10px}
+
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--b2);border-radius:2px}
+
+/* ── Mobile FAB (hidden on desktop) ── */
+#mob-fab { display: none; }
+@media (max-width: 768px) {
+  :root {
+    --mu: #8a98ab;
+  }
+
+  body {
+    font-size: 15px;
+    line-height: 1.45;
+    height: auto;
+    min-height: 100vh;
+    overflow: auto;
+    padding-bottom: 24px;
+  }
+
+  body.large-text {
+    font-size: 17px !important;
+    line-height: 1.6;
+  }
+
+  body.large-text .btn,
+  body.large-text .tab,
+  body.large-text .stat-lbl,
+  body.large-text .field-label,
+  body.large-text .side-hdr,
+  body.large-text td,
+  body.large-text th {
+    font-size: 13px !important;
+  }
+
+  body.large-text .pname {
+    font-size: 16px;
+    line-height: 1.4;
+  }
+
+  /* ── Nav → slim non-sticky platform pill bar ── */
+  nav {
+    position: static;
+    height: auto;
+    display: flex;
+    padding: 10px 12px;
+    gap: 0;
+    border-bottom: 1px solid var(--b1);
+    border-top: none;
+  }
+
+  .nav-brand,
+  .nav-link {
+    display: none !important;
+  }
+
+  #pullBtn,
+  #pushBtn {
+    display: none !important;
+  }
+
+  .nav-right {
+    margin: 0;
+    display: flex;
+    width: 100%;
+    gap: 8px;
+  }
+
+  .plat-pill {
+    flex: 1;
+    min-height: 44px;
+    padding: 0 6px;
+    font-size: 11px;
+    gap: 4px;
+    justify-content: center;
+  }
+
+  /* ── Stats: 2-col, hide Out of Sync ── */
+  .layout {
+    display: block;
+    overflow: visible;
+  }
+
+  .main {
+    padding: 12px;
+    gap: 12px;
+    overflow: visible;
+  }
+
+  .stats {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .stat {
+    padding: 12px;
+  }
+
+  .stat.s-oos {
+    display: none;
+  }
+
+  /* ── Toolbar ── */
+  .toolbar {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .search {
+    max-width: none;
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .view-tabs {
+    width: 100%;
+  }
+
+  .tab {
+    font-size: 12px;
+    flex: 1;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .btn {
+    font-size: 13px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* ── Prevent iOS auto-zoom on inputs ── */
+  .search input,
+  .field-input,
+  .pname-input,
+  input[type="number"],
+  input[type="text"] {
+    font-size: 16px;
+  }
+
+  .stat-lbl {
+    font-size: 11px;
+  }
+
+  /* ── Table → Cards ── */
+  .tbl-wrap {
+    background: transparent;
+    border: none;
+    overflow: visible;
+  }
+
+  table, thead, tbody, tr, td { display: block; }
+
+  thead { display: none; }
+
+  tbody {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  /*
+   * Each row = card with a 3-col grid:
+   *   col1 = 48px image
+   *   col2 = 1fr  (name, sku, platforms, actions)
+   *   col3 = auto (master stock number)
+   *
+   *   Row1: [img] [product name]  [stock]
+   *   Row2: [img] [sku chips   ]
+   *   Row3: [img] [plat stocks ] (spans col2+3)
+   *   Row4:       [act buttons ] (spans col2+3)
+   */
+  tbody tr {
+    background: var(--s1);
+    border: 1px solid var(--b1);
+    border-radius: 10px;
+    padding: 12px;
+    display: grid;
+    grid-template-columns: 48px 1fr auto;
+    grid-template-rows: auto auto auto auto;
+    column-gap: 10px;
+    row-gap: 6px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  tbody td {
+    padding: 0;
+    width: 100%;
+    /* clear desktop display */
+  }
+
+  /* Suppress generated labels */
+  tbody td::before { content: none; }
+
+  /* td1 = image: col1, all rows */
+  tbody td:nth-child(1) {
+    grid-column: 1;
+    grid-row: 1 / 5;
+    align-self: start;
+  }
+
+  /* td3 = product name: col2, row1 */
+  tbody td:nth-child(3) {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: center;
+    overflow: hidden;
+  }
+
+  /* td4 = master stock: col3, row1 */
+  tbody td:nth-child(4) {
+    grid-column: 3;
+    grid-row: 1;
+    align-self: center;
+    text-align: center;
+  }
+
+  /* td2 = sku chips: col2-3, row2 */
+  tbody td:nth-child(2) {
+    grid-column: 2 / 4;
+    grid-row: 2;
+  }
+
+  /* td5 = platform stocks: col2-3, row3 */
+  tbody td:nth-child(5) {
+    grid-column: 2 / 4;
+    grid-row: 3;
+  }
+
+  /* td6 = actions: col2-3, row4 */
+  tbody td:nth-child(6) {
+    grid-column: 2 / 4;
+    grid-row: 4;
+  }
+
+  /* colspan empty-state row */
+  tbody td[colspan] {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  /* Platforms row: wrap chips */
+  .plat-stocks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    width: 100%;
+  }
+
+  .plat-stock {
+    flex: 1;
+    min-width: 72px;
+    padding: 8px 6px;
+    text-align: center;
+  }
+
+  /* Actions */
+  .row-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+    width: 100%;
+  }
+
+  /* ── Sidebar / Activity log ── */
+  .sidebar {
+    border-left: none;
+    border-top: 1px solid var(--b1);
+    background: var(--s1);
+    margin: 0 12px 12px;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .log-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+  }
+
+  .log-item > div:first-child {
+    display: none;
+  }
+
+  .log-body {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .log-meta {
+    font-size: 10px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .log-msg {
+    margin-top: 0;
+    font-size: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* ── Modals → bottom sheets ── */
+  .overlay {
+    align-items: flex-end;
+  }
+
+  .modal {
+    width: 100vw !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    max-height: 92vh;
+    overflow-y: auto;
+    border-radius: 16px 16px 0 0;
+    padding: 16px;
+    animation: sheet-up .2s ease-out;
+  }
+
+  @keyframes sheet-up {
+    from { transform: translateY(24px); opacity: .92; }
+    to   { transform: translateY(0);    opacity: 1;   }
+  }
+
+  #stockModal .modal {
+    min-height: 70vh;
+    border-radius: 16px 16px 0 0;
+  }
+
+  #sModalVal {
+    min-height: 64px;
+    font-size: 36px;
+    text-align: center;
+  }
+
+  #stockModal .modal-actions {
+    position: sticky;
+    bottom: 0;
+    background: var(--s1);
+    padding-top: 12px;
+  }
+
+  #sSubmitBtn {
+    min-height: 56px;
+    font-size: 14px;
+    width: 100%;
+  }
+
+  /* ── FAB ── */
+  #mob-fab {
+    display: block;
+    position: fixed;
+    bottom: calc(20px + env(safe-area-inset-bottom));
+    right: 16px;
+    z-index: 500;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+  }
+
+  #mob-fab-menu {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+    margin-bottom: 10px;
+    visibility: hidden;
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity .18s, transform .18s, visibility 0s .18s;
+    pointer-events: none;
+  }
+
+  #mob-fab.open #mob-fab-menu {
+    visibility: visible;
+    opacity: 1;
+    transform: translateY(0);
+    transition: opacity .18s, transform .18s;
+    pointer-events: auto;
+  }
+
+  .mob-fab-item {
+    padding: 0 18px;
+    height: 44px;
+    border-radius: 22px;
+    background: var(--s2);
+    border: 1px solid var(--b2);
+    color: var(--tx);
+    font-family: var(--sans);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    white-space: nowrap;
+    box-shadow: 0 4px 14px rgba(0,0,0,.45);
+  }
+
+  .mob-fab-item:active {
+    background: var(--b2);
+  }
+
+  #mob-fab-btn {
+    width: 56px;
+    height: 56px;
+    border-radius: 28px;
+    background: var(--ac);
+    color: #0b0d10;
+    font-size: 26px;
+    line-height: 1;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 18px rgba(0,0,0,.5);
+    transition: transform .2s, background .2s;
+  }
+
+  #mob-fab.open #mob-fab-btn {
+    transform: rotate(45deg);
+    background: var(--ac2);
+  }
+
+  /* ── Toasts (above FAB) ── */
+  #toasts {
+    right: 12px;
+    left: 12px;
+    bottom: calc(90px + env(safe-area-inset-bottom));
+  }
+
+  .toast {
+    min-width: 0;
+    width: 100%;
+  }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand">MANZILL <span>GLOBE</span></div>
+  <a href="/" class="nav-link active">InvSync</a>
+  <a href="/financials" class="nav-link">RevLens</a>
+  <a href="/purchases"  class="nav-link">ProcSync</a>
+  <a href="/documents"  class="nav-link">DocFlow</a>
+  <a href="/shopee-tracker" class="nav-link">Shopee Tracker</a>
+  <a href="/my-devices" class="nav-link">My Devices</a>
+  <div class="nav-right">
+    <div class="plat-pill" data-p="shopee" onclick="clearSession('shopee')"><span class="dot"></span>SHOPEE <span style="opacity:.5;font-size:9px">MY+SG</span></div>
+    <div class="plat-pill" data-p="lazada" onclick="clearSession('lazada')"><span class="dot"></span>LAZADA</div>
+    <div class="plat-pill" data-p="tiktok" onclick="clearSession('tiktok')"><span class="dot"></span>TIKTOK</div>
+    <button class="btn" onclick="pullAll()" id="pullBtn">↓ Pull All</button>
+    <button class="btn btn-ac" onclick="pushOutOfSync()" id="pushBtn">↑ Sync All</button>
+  </div>
+</nav>
+
+<div class="layout">
+  <div class="main">
+    <!-- Stats -->
+    <div class="stats">
+      <div class="stat s-total"><div class="stat-val" id="sTotal">—</div><div class="stat-lbl">Products</div></div>
+      <div class="stat s-groups"><div class="stat-val" id="sGroups">—</div><div class="stat-lbl">Groups</div></div>
+      <div class="stat s-oos"><div class="stat-val" id="sOos">—</div><div class="stat-lbl">Out of Sync</div></div>
+      <div class="stat s-low"><div class="stat-val" id="sLow">—</div><div class="stat-lbl">Low Stock</div></div>
+      <div class="stat s-backorder"><div class="stat-val" id="sBackorder">—</div><div class="stat-lbl">Backorder</div></div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="toolbar">
+      <div class="search"><span style="color:var(--mu);font-size:14px">⌕</span><input type="text" placeholder="Search products..." id="searchInput" oninput="applyFilter()"/></div>
+      <div class="view-tabs">
+        <div class="tab active" id="tabGrouped" onclick="switchView('grouped')">Grouped</div>
+        <div class="tab" id="tabAll" onclick="switchView('all')">All Products</div>
+      </div>
+      <button class="btn" onclick="openSuggestModal()" id="btnAutoGroup">✦ Auto-Group</button>
+      <button class="btn btn-ok" onclick="openCreateGroup()">+ New Group</button>
+    </div>
+
+    <!-- Table -->
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr id="tblHead">
+            <th style="width:42px"></th>
+            <th style="width:130px">SKU</th>
+            <th>Product</th>
+            <th style="text-align:center;width:90px">My Stock</th>
+            <th>Platform Stock</th>
+            <th style="width:100px">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="tblBody">
+          <tr><td colspan="6"><div class="empty"><div class="ico">⬡</div><p>Loading...</p></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="sidebar">
+    <div class="side-hdr">Activity <button class="btn btn-ghost" onclick="loadLogs()">↻</button></div>
+    <div class="log-list" id="logList"></div>
+  </div>
+</div>
+
+<!-- Create/Edit Group Modal -->
+<div class="overlay" id="groupModal">
+  <div class="modal" style="max-width:600px;width:90vw">
+    <h2 id="groupModalTitle">New Group</h2>
+    <input type="hidden" id="gModalId"/>
+
+    <label class="field-label">Group Name (shown on dashboard)</label>
+    <input class="field-input" type="text" id="gName" placeholder="e.g. BOH Teh Tarik"/>
+
+    <label class="field-label">My Physical Stock</label>
+    <input class="field-input" type="number" id="gStock" min="0" value="0"/>
+
+    <label class="field-label">Select Products to Include</label>
+    <div class="search" style="margin-bottom:8px;max-width:100%">
+      <span style="color:var(--mu);font-size:13px">⌕</span>
+      <input type="text" placeholder="Filter products..." id="pickerSearch" oninput="filterPicker()" style="background:none;border:none;outline:none;color:var(--tx);font-family:var(--mono);font-size:12px;padding:7px 6px;width:100%"/>
+    </div>
+    <div class="product-picker" id="productPicker"></div>
+
+    <div class="modal-actions">
+      <button class="btn" onclick="closeGroupModal()">Cancel</button>
+      <button class="btn btn-er" id="gDeleteBtn" onclick="deleteGroup()" style="display:none">Delete Group</button>
+      <button class="btn btn-ac" onclick="saveGroup()" id="gSaveBtn">Create Group</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Master Stock Modal -->
+<div class="overlay" id="stockModal">
+  <div class="modal" style="min-width:340px">
+    <h2>Update Physical Stock</h2>
+    <input type="hidden" id="sModalType"/><!-- 'group' or 'product' -->
+    <input type="hidden" id="sModalId"/>
+    <div id="sModalName" style="font-size:14px;font-weight:600;color:#fff;margin-bottom:16px"></div>
+    <label class="field-label">My Physical Stock (master)</label>
+    <input class="field-input" type="number" id="sModalVal"/>
+    <label class="field-label">Push this stock to platforms</label>
+    <div id="sBdqSection" style="display:none;margin-bottom:16px;padding:12px;background:rgba(240,61,61,.08);border-radius:4px;border:1px solid rgba(240,61,61,.2)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div style="font-size:12px;font-weight:600;color:#fff">Backorder Settings</div>
+        <label style="display:flex;gap:8px;align-items:center;font-size:13px;color:var(--ac);padding:6px 10px;border-radius:3px;cursor:pointer;transition:all .2s"><input type="checkbox" id="sBdqToggle" style="accent-color:var(--ac);width:18px;height:18px;cursor:pointer;margin:0"/> Enable Backorder</label>
+      </div>
+      <div id="sBdqFields" style="display:none">
+        <label class="field-label" style="font-size:11px">Display qty on platforms:</label>
+        <input class="field-input" type="number" id="sBdqVal" min="1" value="5" placeholder="e.g., 5"/>
+        <div style="font-size:10px;color:var(--mu);margin-top:6px">📦 When stock hits 0, platforms will show this qty instead</div>
+      </div>
+    </div>
+    <div style="font-size:10px;color:var(--mu);margin-bottom:6px">⚡ Shopee SG syncs automatically from MY</div>
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      <label style="display:flex;gap:5px;align-items:center;font-size:13px;color:var(--sh)"><input type="checkbox" id="ckShopee" checked style="accent-color:var(--sh)"/> Shopee</label>
+      <label style="display:flex;gap:5px;align-items:center;font-size:13px;color:var(--lz)"><input type="checkbox" id="ckLazada" checked style="accent-color:var(--lz)"/> Lazada</label>
+      <label style="display:flex;gap:5px;align-items:center;font-size:13px;color:var(--tk)"><input type="checkbox" id="ckTiktok" checked style="accent-color:var(--tk)"/> TikTok</label>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeStockModal()">Cancel</button>
+      <button class="btn btn-ac" onclick="submitStock()" id="sSubmitBtn">Push Stock</button>
+    </div>
+  </div>
+</div>
+
+<!-- Image Modal -->
+<div class="overlay" id="imageModal">
+  <div class="modal" style="min-width:360px">
+    <h2>Product Image</h2>
+    <input type="hidden" id="imgType"/>
+    <input type="hidden" id="imgId"/>
+    <img id="imgPreview" class="img-preview"/>
+    <div class="img-drop" id="imgDrop" onclick="document.getElementById('imgFile').click()">
+      <div style="font-size:28px;margin-bottom:8px">📷</div>
+      <p style="font-size:12px;color:var(--mu)">Click or drag & drop · JPG PNG WebP</p>
+    </div>
+    <input type="file" id="imgFile" accept="image/*" style="display:none" onchange="handleImg(event)"/>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeImgModal()">Cancel</button>
+      <button class="btn btn-ac" onclick="submitImg()" id="imgSaveBtn">Save Image</button>
+    </div>
+  </div>
+</div>
+
+<!-- Auto-Group Suggestion Modal -->
+<div class="overlay" id="suggestModal">
+  <div class="modal" style="max-width:700px;width:92vw">
+    <h2>Auto-Group Suggestions</h2>
+    <p style="font-size:12px;color:var(--mu);margin-bottom:16px">Matched by name similarity. Edit names, then accept or skip each suggestion.</p>
+    <div id="suggestList" style="max-height:55vh;overflow-y:auto;padding-right:4px"></div>
+    <div class="modal-actions" style="padding-top:12px">
+      <button class="btn" onclick="closeSuggestModal()">Close</button>
+      <button class="btn btn-ok" onclick="acceptAllSuggestions()" id="acceptAllBtn">Accept All Remaining</button>
+    </div>
+  </div>
+</div>
+
+<div id="toasts"></div>
+
+<!-- Mobile FAB: Pull / Sync All -->
+<div id="mob-fab">
+  <div id="mob-fab-menu">
+    <button class="mob-fab-item" onclick="pullAll();closeFab()">↓ Pull All</button>
+    <button class="mob-fab-item" onclick="pushOutOfSync();closeFab()">↑ Sync All</button>
+  </div>
+  <button id="mob-fab-btn" onclick="toggleFab()" aria-label="Actions">＋</button>
+</div>
+<script>
+function toggleFab(){document.getElementById('mob-fab').classList.toggle('open');}
+function closeFab(){document.getElementById('mob-fab').classList.remove('open');}
+</script>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+let allProducts = [];
+let allGroups   = [];
+let currentView = 'grouped'; // 'grouped' | 'all'
+let pendingImg  = null;
+let pickerSelected = new Set();
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+async function init() {
+  await Promise.all([loadData(), loadLogs(), loadPlatformStatus()]);
+  setInterval(() => { loadData(); loadLogs(); loadPlatformStatus(); }, 30000);
+}
+
+// ── API ───────────────────────────────────────────────────────────────────────
+function getApiAuth() {
+  return '';
+}
+
+async function api(path, method='GET', body=null) {
+  const opts = { method, headers: {'Content-Type':'application/json'} };
+  const auth = getApiAuth();
+  if (auth) opts.headers.Authorization = `Basic ${auth}`;
+  if (body) opts.body = JSON.stringify(body);
+  let r = await fetch('/api' + path, { ...opts, credentials: 'same-origin' });
+  if (r.status === 401) {
+    const next = encodeURIComponent(window.location.pathname + window.location.search);
+    window.location.href = `/auth/login?next=${next}`;
+    throw new Error('Authentication required');
+  }
+  if (!r.ok) { const e = await r.text(); throw new Error(e); }
+  return r.json();
+}
+
+// ── Load ──────────────────────────────────────────────────────────────────────
+async function loadData() {
+  try {
+    [allProducts, allGroups] = await Promise.all([api('/products'), api('/groups')]);
+    render();
+    loadStats();
+  } catch(e) { toast('Load failed: '+e.message,'err'); }
+}
+
+async function loadStats() {
+  try {
+    const s = await api('/stats');
+    document.getElementById('sTotal').textContent     = s.total_products;
+    document.getElementById('sGroups').textContent    = s.total_groups;
+    document.getElementById('sOos').textContent       = s.out_of_sync;
+    document.getElementById('sLow').textContent       = s.low_stock;
+    document.getElementById('sBackorder').textContent = s.backorder || 0;
+  } catch(e) {}
+}
+
+async function loadLogs() {
+  try {
+    const logs = await api('/logs?limit=60');
+    const el = document.getElementById('logList');
+    if (!logs.length) { el.innerHTML='<div style="padding:16px;text-align:center;color:var(--mu);font-size:11px">No activity</div>'; return; }
+    el.innerHTML = logs.map(l => {
+      const t = new Date(l.created_at + 'Z').toLocaleTimeString('en-MY',{hour:'2-digit',minute:'2-digit'});
+      const stock = l.old_stock!=null && l.new_stock!=null ? ` ${l.old_stock}→${l.new_stock}` : '';
+      return `<div class="log-item">
+        <div><div class="log-act ${l.action}">${l.action}</div><div style="font-size:9px;font-weight:700;color:var(--mu);margin-top:3px;text-align:center;letter-spacing:.5px">${l.platform}</div></div>
+        <div class="log-body"><div class="log-meta">${t}${stock}</div><div class="log-msg">${esc(l.message||'')}</div></div>
+      </div>`;
+    }).join('');
+  } catch(e) {}
+}
+
+async function loadPlatformStatus() {
+  try {
+    const s = await api('/platforms/status');
+    for (const [p,info] of Object.entries(s)) {
+      const pillKey = p === 'shopee_sg' ? 'shopee' : p;
+      const el = document.querySelector(`.plat-pill[data-p="${pillKey}"]`);
+      if (el && info.has_session) el.classList.add('online');
+    }
+  } catch(e) {}
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function render() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  if (currentView === 'grouped') renderGrouped(q);
+  else renderAll(q);
+}
+
+function shopeeCell(lmy, lsg) {
+  const active = (lmy || lsg) ? 'active' : 'inactive';
+  const myVal  = lmy ? (lmy.current_stock === -1 ? '\u2014' : lmy.current_stock) : '\u2014';
+  const myCls  = stockClass(lmy);
+  const myHint = stockHint(lmy);
+  if (lsg) {
+    const sgVal = lsg.current_stock === -1 ? '\u2014' : lsg.current_stock;
+    const sgCls = stockClass(lsg);
+    const sgHint = stockHint(lsg);
+    const cellClass = lsg.sync_status === 'db_only_synced' ? `${active} db-only` : active;
+    return `<div class="plat-stock ${cellClass}" data-p="shopee" style="min-width:88px">
+      <div class="ps-label">SHOPEE</div>
+      <div class="ps-split">
+        <div><div class="ps-sg">MY</div><div class="ps-val ${myCls}" title="${myHint}">${myVal}</div></div>
+        <div class="ps-split-divider"></div>
+        <div><div class="ps-sg">SG</div><div class="ps-val ${sgCls}" title="${sgHint}">${sgVal}</div></div>
+      </div></div>`;
+  }
+  return `<div class="plat-stock ${active}" data-p="shopee">
+    <div class="ps-label">SHOPEE</div><div class="ps-val ${myCls}" title="${myHint}">${myVal}</div></div>`;
+}
+
+function stockClass(listing) {
+  if (!listing) return '';
+  const out = [];
+  if (listing.sync_status === 'db_only_synced') out.push('db-only');
+  if (listing.current_stock === 0) out.push('zero');
+  else if (listing.current_stock <= 5 && listing.current_stock > 0) out.push('low');
+  return out.join(' ');
+}
+
+function stockHint(listing) {
+  if (!listing) return '';
+  if (listing.sync_status === 'db_only_synced') {
+    return 'DB-only update: platform write blocked (Shopee SG mirror lock). Waiting platform auto-sync confirmation.';
+  }
+  return '';
+}
+
+function renderGrouped(q='') {
+  const tbody = document.getElementById('tblBody');
+
+  // Products that belong to at least one group
+  const groupedProductIds = new Set(allGroups.flatMap(g => g.members.map(m => m.id)));
+
+  // Build rows: groups first, then ungrouped products
+  let rows = '';
+
+  // Groups
+  const filteredGroups = allGroups.filter(g =>
+    !q || g.display_name.toLowerCase().includes(q) ||
+    g.members.some(m => m.name.toLowerCase().includes(q) || m.master_sku.toLowerCase().includes(q))
+  );
+
+  for (const g of filteredGroups) {
+    // Collect all platform listings from all members
+    const byPlat = { shopee: null, shopee_sg: null, lazada: null, tiktok: null };
+    const skuChips = [];
+    for (const member of g.members) {
+      for (const l of member.listings) {
+        byPlat[l.platform] = l;
+        skuChips.push({ platform: l.platform, sku: l.platform_sku || member.master_sku });
+      }
+    }
+
+    const imgHtml = g.image_url
+      ? `<img src="${g.image_url}" class="pimg" onclick="openImgModal('group',${g.id})"/>`
+      : `<div class="pimg-ph" onclick="openImgModal('group',${g.id})">+</div>`;
+
+    const skuHtml = skuChips.map(s =>
+      `<div class="sku-chip" data-p="${s.platform}"><span class="plat-dot"></span>${s.sku.substring(0,20)}${s.sku.length>20?'…':''}</div>`
+    ).join('');
+
+    const platHtml = [
+      shopeeCell(byPlat.shopee, byPlat.shopee_sg),
+      ...['lazada','tiktok'].map(p => {
+        const l = byPlat[p];
+        const active = l ? 'active' : 'inactive';
+        const val = l ? (l.current_stock === -1 ? '\u2014' : l.current_stock) : '\u2014';
+        const cls = stockClass(l);
+        const hint = stockHint(l);
+        const cellClass = l && l.sync_status === 'db_only_synced' ? `${active} db-only` : active;
+        return `<div class="plat-stock ${cellClass}" data-p="${p}"><div class="ps-label">${p}</div><div class="ps-val ${cls}" title="${hint}">${val}</div></div>`;
+      })
+    ].join('');
+
+    const ms = g.master_stock;
+    const msCls = ms < 0 ? 'backorder' : ms === 0 ? 'zero' : ms <= 5 ? 'low' : '';
+
+    rows += `<tr>
+      <td>${imgHtml}</td>
+      <td><div class="sku-wrap">${skuHtml}</div></td>
+      <td>
+        <div class="pname" ondblclick="startEditName('group',${g.id},this)" title="Double-click to rename">${esc(g.display_name)}</div>
+        <div class="pname-sub">${g.members.length} platforms grouped</div>
+      </td>
+      <td style="text-align:center">
+        <div style="display:flex;align-items:center;justify-content:center">
+          <div class="master-stock ${msCls}" onclick="openStockModal('group',${g.id},'${esc(g.display_name)}',${g.master_stock},${g.backorder_display_qty||0})" title="Click to update">${ms}</div>
+          ${g.backorder_display_qty>0?`<span class="bo-badge" title="Backorder enabled (${g.backorder_display_qty})">↻ BO</span>`:''}        </div>
+      </td>
+      <td><div class="plat-stocks">${platHtml}</div></td>
+      <td><div class="row-actions">
+        <button class="btn btn-ghost" onclick="openEditGroup(${g.id})" title="Edit group">✎</button>
+        <button class="btn btn-ghost btn-er" onclick="confirmDeleteGroup(${g.id})" title="Delete group">✕</button>
+      </div></td>
+    </tr>`;
+  }
+
+  // Ungrouped products
+  const ungrouped = allProducts.filter(p =>
+    !groupedProductIds.has(p.id) &&
+    (!q || p.name.toLowerCase().includes(q) || p.master_sku.toLowerCase().includes(q))
+  );
+
+  for (const p of ungrouped) {
+    const l = p.listings[0];
+    const platform = l ? l.platform : '';
+    const stock = l ? (l.current_stock === -1 ? '—' : l.current_stock) : '—';
+    const active = l ? 'active' : 'inactive';
+    const stockCls = l && l.current_stock === 0 ? 'zero' : l && l.current_stock <= 5 ? 'low' : '';
+
+    const imgHtml = p.image_url
+      ? `<img src="${p.image_url}" class="pimg" onclick="openImgModal('product',${p.id})"/>`
+      : `<div class="pimg-ph" onclick="openImgModal('product',${p.id})">+</div>`;
+
+    const ms = p.master_stock;
+    const msCls = ms < 0 ? 'backorder' : ms === 0 ? 'zero' : ms <= 5 ? 'low' : '';
+    const msLabel = (ms < 0 && p.backorder_display_qty > 0) ? `${ms}→${p.backorder_display_qty}` : ms;
+
+    rows += `<tr style="opacity:.65">
+      <td>${imgHtml}</td>
+      <td><div class="sku-chip" data-p="${platform}"><span class="plat-dot"></span>${p.master_sku.substring(0,22)}</div></td>
+      <td>
+        <div class="pname" style="font-size:13px">${esc(p.name.substring(0,70))}${p.name.length>70?'…':''}</div>
+        <span class="ungrouped-badge">not grouped</span>
+      </td>
+      <td style="text-align:center">
+        <div style="display:flex;align-items:center;justify-content:center">
+          <div class="master-stock ${msCls}" onclick="openStockModal('product',${p.id},'${esc(p.name.substring(0,40))}',${p.master_stock},${p.backorder_display_qty||0})">${msLabel}</div>
+          ${p.backorder_display_qty>0?`<span class="bo-badge" title="Backorder enabled (${p.backorder_display_qty})">↻ BO</span>`:''}
+        </div>
+      </td>
+      <td><div class="plat-stocks">
+        ${[
+            p.listings.find(x=>x.platform==='shopee'),
+            p.listings.find(x=>x.platform==='shopee_sg')
+        ,
+          ...['lazada','tiktok'].map(plt => {
+            const ll = p.listings.find(x=>x.platform===plt);
+            if (!ll) return `<div class="plat-stock inactive" data-p="${plt}"><div class="ps-label">${plt}</div><div class="ps-val">\u2014</div></div>`;
+            const sc = ll.current_stock === -1 ? '\u2014' : ll.current_stock;
+            const sc2 = stockClass(ll);
+            const hint = stockHint(ll);
+            const cellClass = ll.sync_status === 'db_only_synced' ? 'active db-only' : 'active';
+            return `<div class="plat-stock ${cellClass}" data-p="${plt}"><div class="ps-label">${plt}</div><div class="ps-val ${sc2}" title="${hint}">${sc}</div></div>`;
+          })
+        ].join('')}
+      </div></td>
+      <td><div class="row-actions"><button class="btn btn-ghost" onclick="openCreateGroupWith(${p.id})" title="Add to group">+ Group</button></div></td>
+    </tr>`;
+  }
+
+  if (!rows) {
+    rows = `<tr><td colspan="6"><div class="empty"><div class="ico">⬡</div><p>No products found</p></div></td></tr>`;
+  }
+  tbody.innerHTML = rows;
+}
+
+function renderAll(q='') {
+  const tbody = document.getElementById('tblBody');
+  const products = allProducts.filter(p =>
+    !q || p.name.toLowerCase().includes(q) || p.master_sku.toLowerCase().includes(q)
+  );
+  if (!products.length) {
+    tbody.innerHTML = `<tr><td colspan="6"><div class="empty"><div class="ico">⬡</div><p>No products</p></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = products.map(p => {
+    const ms = p.master_stock;
+    const msCls = ms<0?'backorder':ms===0?'zero':ms<=5?'low':'';
+    const msLabel = (ms<0 && p.backorder_display_qty>0)?`${ms}→${p.backorder_display_qty}`:ms;
+    const imgHtml = p.image_url
+      ? `<img src="${p.image_url}" class="pimg" onclick="openImgModal('product',${p.id})"/>`
+      : `<div class="pimg-ph" onclick="openImgModal('product',${p.id})">+</div>`;
+    const platHtml = [
+      shopeeCell(
+        p.listings.find(x=>x.platform==='shopee'),
+        p.listings.find(x=>x.platform==='shopee_sg')
+      ),
+      ...['lazada','tiktok'].map(plt => {
+        const l = p.listings.find(x=>x.platform===plt);
+        if (!l) return `<div class="plat-stock inactive" data-p="${plt}"><div class="ps-label">${plt}</div><div class="ps-val">\u2014</div></div>`;
+        const sc = l.current_stock===-1?'\u2014':l.current_stock;
+        const sc2 = stockClass(l);
+        const hint = stockHint(l);
+        const cellClass = l.sync_status === 'db_only_synced' ? 'active db-only' : 'active';
+        return `<div class="plat-stock ${cellClass}" data-p="${plt}"><div class="ps-label">${plt}</div><div class="ps-val ${sc2}" title="${hint}">${sc}</div></div>`;
+      })
+    ].join('');
+    return `<tr>
+      <td>${imgHtml}</td>
+      <td><div class="sku-chip" data-p="${p.listings[0]?.platform||''}"><span class="plat-dot"></span>${p.master_sku.substring(0,22)}</div></td>
+      <td><div class="pname" style="font-size:13px">${esc(p.name.substring(0,70))}${p.name.length>70?'…':''}</div></td>
+      <td style="text-align:center">
+        <div style="display:flex;align-items:center;justify-content:center">
+          <div class="master-stock ${msCls}" onclick="openStockModal('product',${p.id},'${esc(p.name.substring(0,40))}',${p.master_stock},${p.backorder_display_qty||0})">${msLabel}</div>
+          ${p.backorder_display_qty>0?`<span class="bo-badge" title="Backorder enabled (${p.backorder_display_qty})">↻ BO</span>`:''}
+        </div>
+      </td>
+      <td><div class="plat-stocks">${platHtml}</div></td>
+      <td></td>
+    </tr>`;
+  }).join('');
+}
+
+function applyFilter() { render(); }
+function switchView(v) {
+  currentView = v;
+  document.getElementById('tabGrouped').classList.toggle('active', v==='grouped');
+  document.getElementById('tabAll').classList.toggle('active', v==='all');
+  render();
+}
+
+// ── Inline name edit ──────────────────────────────────────────────────────────
+function startEditName(type, id, el) {
+  const current = el.textContent;
+  const input = document.createElement('input');
+  input.className = 'pname-input';
+  input.value = current;
+  el.replaceWith(input);
+  input.focus(); input.select();
+  const save = async () => {
+    const newName = input.value.trim() || current;
+    try {
+      if (type === 'group') await api(`/groups/${id}`, 'PATCH', { display_name: newName });
+      else await api(`/products/${id}`, 'PATCH', { name: newName });
+      await loadData();
+    } catch(e) { toast('Save failed: '+e.message,'err'); }
+  };
+  input.addEventListener('blur', save);
+  input.addEventListener('keydown', e => { if (e.key==='Enter') input.blur(); if (e.key==='Escape') { input.value=current; input.blur(); }});
+}
+
+// ── Group modal ───────────────────────────────────────────────────────────────
+function openCreateGroup() {
+  pickerSelected = new Set();
+  document.getElementById('gModalId').value = '';
+  document.getElementById('groupModalTitle').textContent = 'New Group';
+  document.getElementById('gName').value = '';
+  document.getElementById('gStock').value = '0';
+  document.getElementById('gDeleteBtn').style.display = 'none';
+  document.getElementById('gSaveBtn').textContent = 'Create Group';
+  renderPicker();
+  document.getElementById('groupModal').classList.add('open');
+}
+
+function openCreateGroupWith(productId) {
+  openCreateGroup();
+  pickerSelected.add(productId);
+  renderPicker();
+}
+
+function openEditGroup(groupId) {
+  const g = allGroups.find(x => x.id === groupId);
+  if (!g) return;
+  pickerSelected = new Set(g.members.map(m => m.id));
+  document.getElementById('gModalId').value = groupId;
+  document.getElementById('groupModalTitle').textContent = 'Edit Group';
+  document.getElementById('gName').value = g.display_name;
+  document.getElementById('gStock').value = g.master_stock;
+  document.getElementById('gDeleteBtn').style.display = '';
+  document.getElementById('gSaveBtn').textContent = 'Save Changes';
+  renderPicker();
+  document.getElementById('groupModal').classList.add('open');
+}
+
+function closeGroupModal() { document.getElementById('groupModal').classList.remove('open'); }
+
+function renderPicker(filter='') {
+  const container = document.getElementById('productPicker');
+  const f = filter.toLowerCase();
+  const items = allProducts.filter(p => !f || p.name.toLowerCase().includes(f) || p.master_sku.includes(f));
+  container.innerHTML = items.map(p => {
+    const checked = pickerSelected.has(p.id);
+    const platTags = p.listings.map(l =>
+      `<span class="picker-plat ${l.platform}">${l.platform}</span>`
+    ).join('');
+    return `<div class="picker-item ${checked?'selected':''}" onclick="togglePicker(${p.id})">
+      <input type="checkbox" ${checked?'checked':''} onclick="event.stopPropagation();togglePicker(${p.id})"/>
+      <div style="min-width:0;flex:1">
+        <div style="font-size:12px;font-weight:600;color:#e0e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.name.substring(0,60))}</div>
+        <div style="font-family:monospace;font-size:10px;color:var(--mu)">${p.master_sku.substring(0,30)}</div>
+      </div>
+      <div class="picker-plats">${platTags}</div>
+    </div>`;
+  }).join('');
+}
+
+function filterPicker() { renderPicker(document.getElementById('pickerSearch').value); }
+
+function togglePicker(id) {
+  if (pickerSelected.has(id)) pickerSelected.delete(id);
+  else pickerSelected.add(id);
+  renderPicker(document.getElementById('pickerSearch').value);
+}
+
+async function saveGroup() {
+  const id = document.getElementById('gModalId').value;
+  const name = document.getElementById('gName').value.trim();
+  const stock = parseInt(document.getElementById('gStock').value) || 0;
+  const ids = Array.from(pickerSelected);
+  if (!name) { toast('Enter a group name','warn'); return; }
+  if (ids.length < 1) { toast('Select at least one product','warn'); return; }
+  const btn = document.getElementById('gSaveBtn');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
+  try {
+    if (id) {
+      await api(`/groups/${id}`, 'PATCH', { display_name: name, master_stock: stock, product_ids: ids });
+      toast('Group updated');
+    } else {
+      await api('/groups', 'POST', { display_name: name, product_ids: ids, master_stock: stock });
+      toast('Group created');
+    }
+    closeGroupModal();
+    await loadData();
+  } catch(e) { toast('Save failed: '+e.message,'err'); }
+  btn.disabled = false; btn.textContent = id ? 'Save Changes' : 'Create Group';
+}
+
+async function deleteGroup() {
+  const id = document.getElementById('gModalId').value;
+  if (!id || !confirm('Delete this group? Products will not be deleted.')) return;
+  try {
+    await api(`/groups/${id}`, 'DELETE');
+    toast('Group deleted');
+    closeGroupModal();
+    await loadData();
+  } catch(e) { toast('Delete failed: '+e.message,'err'); }
+}
+
+async function confirmDeleteGroup(id) {
+  if (!confirm('Delete this group? Products will not be deleted.')) return;
+  try {
+    await api(`/groups/${id}`, 'DELETE');
+    toast('Group deleted');
+    await loadData();
+  } catch(e) { toast('Failed: '+e.message,'err'); }
+}
+
+// ── Auto-group suggestions ────────────────────────────────────────────────────
+let suggestions = [];
+
+async function openSuggestModal() {
+  const btn = document.getElementById('btnAutoGroup');
+  btn.disabled = true; btn.textContent = '…';
+  try {
+    suggestions = await api('/groups/suggest');
+  } catch(e) {
+    toast('Suggest failed: ' + e.message, 'err');
+    btn.disabled = false; btn.textContent = '✦ Auto-Group';
+    return;
+  }
+  btn.disabled = false; btn.textContent = '✦ Auto-Group';
+  if (!suggestions.length) {
+    toast('No suggestions — all ungrouped products are too different to match automatically', 'warn');
+    return;
+  }
+  renderSuggestions();
+  document.getElementById('suggestModal').classList.add('open');
+}
+
+function closeSuggestModal() {
+  document.getElementById('suggestModal').classList.remove('open');
+}
+
+function renderSuggestions() {
+  const platColor = {shopee:'var(--sh)',shopee_sg:'var(--sh)',lazada:'var(--lz)',tiktok:'var(--tk)'};
+  document.getElementById('suggestList').innerHTML = suggestions.map((s, i) => `
+    <div class="suggest-card" id="sc_${i}">
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+        <input class="field-input" style="flex:1;margin:0;font-size:12px" id="sn_${i}" value="${esc(s.suggested_name)}"/>
+        <button class="btn btn-ok" style="white-space:nowrap" onclick="acceptSuggestion(${i})">✓ Accept</button>
+        <button class="btn btn-ghost" onclick="skipSuggestion(${i})">✕ Skip</button>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        ${s.products.map(p => `
+          <div class="sug-prod">
+            <div style="display:flex;gap:4px;margin-bottom:3px">${p.listings.map(l => `<span style="font-size:8px;font-weight:700;color:${platColor[l.platform]||'var(--mu)'}">${l.platform.toUpperCase().replace('_SG',' SG')}</span>`).join(' ')}</div>
+            <div style="font-size:10px;color:var(--tx);line-height:1.3">${esc(p.name.substring(0,50))}${p.name.length>50?'\u2026':''}</div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
+async function acceptSuggestion(i) {
+  const s = suggestions[i];
+  const name = document.getElementById(`sn_${i}`).value.trim() || s.suggested_name;
+  const stocks = s.products.flatMap(p => p.listings.map(l => l.current_stock));
+  const maxStock = stocks.length ? Math.max(...stocks) : 0;
+  try {
+    await api('/groups', 'POST', {
+      display_name: name,
+      product_ids: s.products.map(p => p.id),
+      master_stock: maxStock,
+    });
+    document.getElementById(`sc_${i}`).classList.add('accepted');
+    toast(`Group "${name}" created`);
+    await loadData();
+  } catch(e) { toast('Failed: ' + e.message, 'err'); }
+}
+
+function skipSuggestion(i) {
+  document.getElementById(`sc_${i}`).classList.add('accepted');
+}
+
+async function acceptAllSuggestions() {
+  const btn = document.getElementById('acceptAllBtn');
+  btn.disabled = true;
+  let created = 0;
+  for (let i = 0; i < suggestions.length; i++) {
+    const card = document.getElementById(`sc_${i}`);
+    if (!card || card.classList.contains('accepted')) continue;
+    const s = suggestions[i];
+    const name = document.getElementById(`sn_${i}`).value.trim() || s.suggested_name;
+    const stocks = s.products.flatMap(p => p.listings.map(l => l.current_stock));
+    const maxStock = stocks.length ? Math.max(...stocks) : 0;
+    try {
+      await api('/groups', 'POST', {
+        display_name: name,
+        product_ids: s.products.map(p => p.id),
+        master_stock: maxStock,
+      });
+      card.classList.add('accepted');
+      created++;
+    } catch(e) { toast('Failed for "' + name + '": ' + e.message, 'err'); }
+  }
+  btn.disabled = false;
+  if (created) { toast(`${created} group(s) created`); await loadData(); }
+}
+
+// ── Stock modal ───────────────────────────────────────────────────────────────
+function openStockModal(type, id, name, stock, bdq) {
+  document.getElementById('sModalType').value = type;
+  document.getElementById('sModalId').value   = id;
+  document.getElementById('sModalName').textContent = name;
+  document.getElementById('sModalVal').value  = stock;
+  const bdqSection = document.getElementById('sBdqSection');
+  const bdqToggle = document.getElementById('sBdqToggle');
+  const bdqFields = document.getElementById('sBdqFields');
+  
+  if (type === 'product' || type === 'group') {
+    const isEnabled = bdq > 0;
+    bdqToggle.checked = isEnabled;
+    document.getElementById('sBdqVal').value = bdq || 5;
+    bdqFields.style.display = isEnabled ? 'block' : 'none';
+    bdqSection.style.display = 'block';
+    
+    bdqToggle.onchange = () => {
+      bdqFields.style.display = bdqToggle.checked ? 'block' : 'none';
+      if (bdqToggle.checked && !document.getElementById('sBdqVal').value) {
+        document.getElementById('sBdqVal').value = 5;
+      }
+    };
+  } else {
+    bdqSection.style.display = 'none';
+  }
+  document.getElementById('stockModal').classList.add('open');
+  document.getElementById('sModalVal').focus();
+}
+function closeStockModal() { document.getElementById('stockModal').classList.remove('open'); }
+
+async function submitStock() {
+  const type  = document.getElementById('sModalType').value;
+  const id    = document.getElementById('sModalId').value;
+  const stock = parseInt(document.getElementById('sModalVal').value);
+  if (isNaN(stock)) { toast('Enter valid stock','warn'); return; }
+  const platforms = [];
+  if (document.getElementById('ckShopee').checked) { platforms.push('shopee'); platforms.push('shopee_sg'); }
+  if (document.getElementById('ckLazada').checked) platforms.push('lazada');
+  if (document.getElementById('ckTiktok').checked) platforms.push('tiktok');
+  const btn = document.getElementById('sSubmitBtn');
+  btn.disabled=true; btn.innerHTML='<span class="spinner"></span>';
+  try {
+    if (type === 'group') {
+      await api(`/groups/${id}/push`, 'POST', { new_stock: stock, platforms: platforms.length ? platforms : null });
+    } else {
+      await api(`/products/${id}/push`, 'POST', { new_stock: stock, platforms: platforms.length ? platforms : null });
+    }
+    if (type === 'product' || type === 'group') {
+      const bdqToggle = document.getElementById('sBdqToggle');
+      let bdq = 0;
+      if (bdqToggle.checked) {
+        bdq = parseInt(document.getElementById('sBdqVal').value) || 5;
+      }
+      await api(`/${type === 'product' ? 'products' : 'groups'}/${id}`, 'PATCH', { backorder_display_qty: Math.max(0, bdq) });
+    }
+    toast('Stock updated & pushed');
+    closeStockModal();
+    await loadData();
+  } catch(e) { toast('Failed: '+e.message,'err'); }
+  btn.disabled=false; btn.textContent='Push Stock';
+}
+
+// ── Actions ───────────────────────────────────────────────────────────────────
+async function pullAll() {
+  const btn = document.getElementById('pullBtn');
+  btn.disabled=true; btn.innerHTML='<span class="spinner"></span>';
+  try {
+    await api('/sync/pull-all','POST');
+    toast('Pull complete');
+    await loadData(); await loadLogs();
+  } catch(e) { toast('Pull failed: '+e.message,'err'); }
+  btn.disabled=false; btn.textContent='↓ Pull All';
+}
+
+async function pushOutOfSync() {
+  const btn = document.getElementById('pushBtn');
+  btn.disabled=true; btn.innerHTML='<span class="spinner"></span>';
+  try {
+    await api('/sync/push-out-of-sync','POST');
+    toast('Sync complete');
+    await loadData(); await loadLogs();
+  } catch(e) { toast('Sync failed: '+e.message,'err'); }
+  btn.disabled=false; btn.textContent='↑ Sync All';
+}
+
+async function clearSession(platform) {
+  if (!confirm(`Clear ${platform} session?`)) return;
+  try { await api(`/platforms/${platform}/session`,'DELETE'); toast(`${platform} session cleared`,'warn'); loadPlatformStatus(); }
+  catch(e) { toast('Error: '+e.message,'err'); }
+}
+
+// ── Image modal ───────────────────────────────────────────────────────────────
+function openImgModal(type, id) {
+  document.getElementById('imgType').value = type;
+  document.getElementById('imgId').value   = id;
+  pendingImg = null;
+  document.getElementById('imgPreview').style.display = 'none';
+  document.getElementById('imgDrop').style.display = '';
+  document.getElementById('imageModal').classList.add('open');
+}
+function closeImgModal() { document.getElementById('imageModal').classList.remove('open'); }
+
+function handleImg(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const r = new FileReader();
+  r.onload = ev => {
+    pendingImg = ev.target.result;
+    const pr = document.getElementById('imgPreview');
+    pr.src = pendingImg; pr.style.display = 'block';
+    document.getElementById('imgDrop').style.display = 'none';
+  };
+  r.readAsDataURL(file);
+}
+
+const drop = document.getElementById('imgDrop');
+drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('drag'); });
+drop.addEventListener('dragleave', () => drop.classList.remove('drag'));
+drop.addEventListener('drop', e => {
+  e.preventDefault(); drop.classList.remove('drag');
+  const f = e.dataTransfer.files[0];
+  if (f) handleImg({ target: { files: [f] } });
+});
+
+async function submitImg() {
+  if (!pendingImg) { toast('Select an image first','warn'); return; }
+  const type = document.getElementById('imgType').value;
+  const id   = document.getElementById('imgId').value;
+  const btn  = document.getElementById('imgSaveBtn');
+  btn.disabled=true; btn.innerHTML='<span class="spinner"></span>';
+  try {
+    const path = type==='group' ? `/groups/${id}/image` : `/products/${id}/image`;
+    await api(path,'POST',{image_data:pendingImg});
+    toast('Image saved');
+    closeImgModal();
+    await loadData();
+  } catch(e) { toast('Upload failed: '+e.message,'err'); }
+  btn.disabled=false; btn.textContent='Save Image';
+}
+
+// ── Utils ─────────────────────────────────────────────────────────────────────
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+function toast(msg,type='ok'){
+  const el=document.createElement('div');
+  el.className=`toast ${type}`; el.textContent=msg;
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(()=>el.remove(),4000);
+}
+
+// Close modals on backdrop click
+['groupModal','stockModal','imageModal'].forEach(id => {
+  document.getElementById(id).addEventListener('click', function(e){ if(e.target===this) this.classList.remove('open'); });
+});
+document.getElementById('sModalVal').addEventListener('keydown', e => { if(e.key==='Enter') submitStock(); });
+document.getElementById('gName').addEventListener('keydown', e => { if(e.key==='Enter') saveGroup(); });
+
+function applyMobileLargeText() {
+  if (window.matchMedia('(max-width: 768px)').matches) {
+    document.body.classList.add('large-text');
+  }
+}
+
+applyMobileLargeText();
+init();
+</script>
+</body>
+</html>

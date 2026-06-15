@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>My Devices - InvSync</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Barlow+Condensed:wght@400;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #0b0d10;
+    --surface: #13161b;
+    --surface-2: #1a1f27;
+    --border: #2f3640;
+    --text: #c6d0de;
+    --muted: #7f8b9c;
+    --accent: #d4f53c;
+    --danger: #f03d3d;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    font-family: 'Barlow Condensed', sans-serif;
+    background: radial-gradient(circle at 10% 0%, rgba(212, 245, 60, 0.08), transparent 36%), var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  .wrap {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 22px;
+  }
+
+  .top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  .title {
+    font-size: 30px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin: 0;
+    color: #f7fbff;
+  }
+
+  .sub {
+    margin: 0;
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  .btn {
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--text);
+    border-radius: 4px;
+    padding: 8px 14px;
+    font-family: inherit;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+
+  .btn:hover { background: #262e39; }
+
+  .card {
+    border: 1px solid var(--border);
+    background: var(--surface);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  thead {
+    background: var(--surface-2);
+  }
+
+  th, td {
+    text-align: left;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+
+  th {
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  td {
+    font-size: 15px;
+  }
+
+  .mono {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+  }
+
+  .danger {
+    color: var(--danger);
+    border-color: rgba(240, 61, 61, 0.35);
+  }
+
+  .danger:hover {
+    background: rgba(240, 61, 61, 0.12);
+  }
+
+  .empty {
+    padding: 26px;
+    text-align: center;
+    color: var(--muted);
+  }
+
+  .msg {
+    min-height: 22px;
+    margin-bottom: 8px;
+    color: var(--muted);
+  }
+
+  .msg.error { color: var(--danger); }
+
+  @media (max-width: 780px) {
+    .wrap { padding: 14px; }
+    .top { flex-direction: column; align-items: flex-start; }
+    table, thead, tbody, tr, th, td { display: block; }
+    thead { display: none; }
+    tr { border-bottom: 1px solid var(--border); padding: 8px 0; }
+    td { border: none; padding: 6px 12px; }
+    td::before {
+      content: attr(data-label);
+      display: block;
+      font-size: 10px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 2px;
+    }
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div>
+        <h1 class="title">My Devices</h1>
+        <p class="sub">Manage instant-login devices and revoke access at any time.</p>
+      </div>
+      <div>
+        <button class="btn" onclick="window.location.href='/'">Back to Dashboard</button>
+        <button class="btn" onclick="loadDevices()">Refresh</button>
+      </div>
+    </div>
+
+    <div class="msg" id="message">Loading devices...</div>
+
+    <div class="card">
+      <table>
+        <thead>
+          <tr>
+            <th>Device</th>
+            <th>Added</th>
+            <th>Last Used</th>
+            <th>Expires</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="tbody">
+          <tr><td colspan="5" class="empty">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+<script>
+async function loadDevices() {
+  setMessage('Loading devices...', '');
+  const tbody = document.getElementById('tbody');
+  try {
+    const res = await fetch('/auth/device/my-devices', { credentials: 'same-origin' });
+    if (res.status === 401) {
+      const next = encodeURIComponent(window.location.pathname + window.location.search);
+      window.location.href = '/auth/login?next=' + next;
+      return;
+    }
+    const data = await res.json().catch(function () { return {}; });
+    if (!res.ok) {
+      throw new Error(data.detail || 'Failed to load devices');
+    }
+
+    const devices = Array.isArray(data.devices) ? data.devices : [];
+    if (!devices.length) {
+      tbody.innerHTML = '<tr><td colspan="5" class="empty">No registered devices yet.</td></tr>';
+      setMessage('No devices registered.', '');
+      return;
+    }
+
+    tbody.innerHTML = devices.map(function (d) {
+      const label = escapeHtml(d.device_label || 'Unnamed device');
+      return '<tr>' +
+        '<td data-label="Device">' + label + '</td>' +
+        '<td data-label="Added" class="mono">' + fmtDate(d.created_at) + '</td>' +
+        '<td data-label="Last Used" class="mono">' + fmtDate(d.last_used_at) + '</td>' +
+        '<td data-label="Expires" class="mono">' + fmtDate(d.expires_at) + '</td>' +
+        '<td data-label="Action"><button class="btn danger" onclick="revokeDevice(' + Number(d.id) + ')">Revoke</button></td>' +
+      '</tr>';
+    }).join('');
+    setMessage('Showing ' + devices.length + ' device(s).', '');
+  } catch (err) {
+    tbody.innerHTML = '<tr><td colspan="5" class="empty">Failed to load devices.</td></tr>';
+    setMessage(err && err.message ? err.message : 'Failed to load devices', 'error');
+  }
+}
+
+async function revokeDevice(deviceId) {
+  if (!Number.isFinite(deviceId) || deviceId <= 0) return;
+  if (!window.confirm('Revoke this device token?')) return;
+
+  setMessage('Revoking device...', '');
+  try {
+    const res = await fetch('/auth/device/' + deviceId, {
+      method: 'DELETE',
+      credentials: 'same-origin',
+    });
+    const data = await res.json().catch(function () { return {}; });
+    if (!res.ok) {
+      throw new Error(data.detail || 'Failed to revoke device');
+    }
+    setMessage('Device revoked.', '');
+    await loadDevices();
+  } catch (err) {
+    setMessage(err && err.message ? err.message : 'Failed to revoke device', 'error');
+  }
+}
+
+function fmtDate(value) {
+  if (!value) return '-';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '-';
+  return d.toLocaleString();
+}
+
+function setMessage(text, type) {
+  const el = document.getElementById('message');
+  el.textContent = text;
+  el.className = 'msg' + (type ? ' ' + type : '');
+}
+
+function escapeHtml(v) {
+  return String(v)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+loadDevices();
+</script>
+</body>
+</html>

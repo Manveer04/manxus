@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Shopee Tracker | InvSync</title>
+<style>
+:root {
+  --bg:#0b0d10; --s1:#13161b; --s2:#1a1f27; --b1:#242930; --b2:#2f3640;
+  --tx:#c6d0de; --mu:#4e5a6a; --ac:#eea12f; --ac2:#ffbf5b;
+  --sh:#ee4d2d; --er:#f03d3d; --ok:#3dca7a; --wn:#f0a500;
+  --mono:'IBM Plex Mono',monospace; --sans:'Barlow Condensed',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--tx);font-family:var(--sans);font-size:15px;min-height:100vh}
+body::before{content:'';position:fixed;inset:0;background-image:radial-gradient(circle at 10% 20%,rgba(238,161,47,.08),transparent 35%),radial-gradient(circle at 90% 10%,rgba(238,77,45,.08),transparent 32%),repeating-linear-gradient(0deg,transparent,transparent 40px,rgba(255,255,255,.015) 40px,rgba(255,255,255,.015) 41px);pointer-events:none;z-index:0}
+nav{position:relative;z-index:3;display:flex;align-items:center;gap:4px;padding:0 20px;height:48px;background:var(--s1);border-bottom:1px solid var(--b1)}
+.nav-brand{font-family:var(--mono);font-size:13px;color:#fff;letter-spacing:.05em;margin-right:8px}
+.nav-brand span{color:var(--ac)}
+.nav-link{padding:5px 12px;border-radius:5px;font-size:13px;color:var(--mu);text-decoration:none;transition:.15s}
+.nav-link:hover{color:var(--tx);background:var(--b1)}
+.nav-link.active{color:#fff;background:var(--b2)}
+.app{position:relative;z-index:2;padding:16px;display:grid;grid-template-columns:360px 1fr;gap:14px}
+.panel{background:var(--s1);border:1px solid var(--b1);border-radius:6px}
+.panel h2{font-size:13px;letter-spacing:1.5px;text-transform:uppercase;color:#fff;padding:12px 14px;border-bottom:1px solid var(--b1)}
+.panel-body{padding:14px}
+.input{width:100%;background:var(--bg);border:1px solid var(--b2);border-radius:4px;color:var(--tx);font-family:var(--mono);font-size:12px;padding:10px;outline:none}
+.input:focus{border-color:var(--ac)}
+.url-list{margin-top:10px;max-height:260px;overflow:auto;display:flex;flex-direction:column;gap:7px}
+.url-row{display:flex;align-items:center;gap:8px;background:var(--s2);border:1px solid var(--b1);padding:7px 8px;border-radius:4px}
+.url-row span{font-family:var(--mono);font-size:11px;color:#d8e2ee;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.url-row button{border:none;background:rgba(240,61,61,.14);color:var(--er);font-weight:700;border-radius:4px;padding:3px 8px;cursor:pointer}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.btn{font-family:var(--sans);font-size:12px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;padding:8px 12px;border:1px solid var(--b2);border-radius:4px;cursor:pointer;background:var(--s2);color:var(--tx)}
+.btn:hover{background:var(--b2)}
+.btn-ac{background:var(--ac);color:#13161b;border-color:var(--ac)}
+.btn-ac:hover{background:var(--ac2)}
+.header{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid var(--b1)}
+.header h1{font-size:24px;letter-spacing:1px;color:#fff}
+.sub{font-family:var(--mono);font-size:11px;color:var(--mu)}
+.status{padding:4px 8px;border:1px solid var(--b2);border-radius:999px;font-size:10px;letter-spacing:1.2px;text-transform:uppercase;font-weight:700}
+.status.idle{color:var(--mu)}
+.status.syncing{color:var(--ac);border-color:rgba(238,161,47,.5)}
+.status.error{color:var(--er);border-color:rgba(240,61,61,.5)}
+.tbl-wrap{overflow:auto;max-height:72vh}
+table{width:100%;border-collapse:collapse}
+thead tr{position:sticky;top:0;background:var(--s2);z-index:1}
+th,td{padding:10px 11px;border-bottom:1px solid var(--b1);text-align:left}
+th{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--mu)}
+td{font-size:13px}
+tr.clickable{cursor:pointer}
+tr.drop{background:rgba(240,61,61,.07)}
+.price{font-family:var(--mono)}
+.trend{display:inline-flex;align-items:center;gap:6px;padding:3px 7px;border-radius:999px;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase}
+.trend.up{background:rgba(240,165,0,.15);color:var(--wn)}
+.trend.down{background:rgba(61,202,122,.16);color:var(--ok)}
+.trend.flat{background:rgba(255,255,255,.07);color:var(--mu)}
+.expand{background:rgba(255,255,255,.02)}
+.empty{padding:60px 24px;text-align:center;color:var(--mu)}
+.empty h3{font-size:22px;color:#fff;margin-bottom:6px}
+.link{color:var(--ac)}
+@media (max-width: 1020px){
+  .app{grid-template-columns:1fr}
+  .tbl-wrap{max-height:none}
+}
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-brand">MANZILL <span>GLOBE</span></div>
+  <a href="/" class="nav-link">InvSync</a>
+  <a href="/financials" class="nav-link">RevLens</a>
+  <a href="/purchases" class="nav-link">ProcSync</a>
+  <a href="/documents" class="nav-link">DocFlow</a>
+  <a href="/shopee-tracker" class="nav-link active">Shopee Tracker</a>
+  <a href="/my-devices" class="nav-link">My Devices</a>
+</nav>
+
+<div id="root"></div>
+
+<script>
+(function () {
+  const LS_KEY = 'shopee_tracker_urls';
+  const root = document.getElementById('root');
+  const state = {
+    urls: [],
+    urlInput: '',
+    rows: [],
+    expanded: '',
+    historyByUrl: {},
+    status: 'idle',
+    error: '',
+    syncSummary: '',
+    syncRecent: [],
+  };
+
+  function esc(value) {
+    return String(value == null ? '' : value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function formatMoney(v) {
+    if (v === null || v === undefined || Number.isNaN(Number(v))) return '-';
+    return 'RM ' + Number(v).toFixed(2);
+  }
+
+  function minutesAgo(iso) {
+    if (!iso) return null;
+    const ms = Date.now() - new Date(iso).getTime();
+    return Math.max(0, Math.floor(ms / 60000));
+  }
+
+  function normalizeUrlList(list) {
+    const seen = new Set();
+    const cleaned = [];
+    for (const raw of list) {
+      const value = String(raw || '').trim();
+      if (!/^https?:\/\//i.test(value)) continue;
+      if (seen.has(value)) continue;
+      seen.add(value);
+      cleaned.push(value);
+    }
+    return cleaned;
+  }
+
+  function sparklineSvg(values) {
+    const data = (values || []).filter((v) => Number.isFinite(Number(v))).map(Number);
+    if (!data.length) return '<span class="sub">n/a</span>';
+    const min = Math.min(...data);
+    const max = Math.max(...data);
+    const width = 110;
+    const height = 30;
+    const pad = 3;
+    const range = max - min || 1;
+    const step = data.length > 1 ? (width - pad * 2) / (data.length - 1) : 0;
+    const points = data.map((v, i) => {
+      const x = pad + i * step;
+      const y = height - pad - ((v - min) / range) * (height - pad * 2);
+      return x.toFixed(1) + ',' + y.toFixed(1);
+    }).join(' ');
+    return '<svg width="110" height="30" viewBox="0 0 110 30" aria-hidden="true"><polyline fill="none" stroke="#eea12f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" points="' + points + '" /></svg>';
+  }
+
+  function historyChartSvg(history) {
+    const data = (history || []).map((h) => Number(h.sale_price ?? h.original_price)).filter((v) => Number.isFinite(v));
+    if (!data.length) return '<div class="sub">No history yet.</div>';
+    const w = 860;
+    const h = 220;
+    const padL = 44;
+    const padR = 18;
+    const padT = 18;
+    const padB = 30;
+    const min = Math.min(...data);
+    const max = Math.max(...data);
+    const range = max - min || 1;
+    const step = data.length > 1 ? (w - padL - padR) / (data.length - 1) : 0;
+    const points = data.map((v, i) => {
+      const x = padL + i * step;
+      const y = h - padB - ((v - min) / range) * (h - padT - padB);
+      return [x, y];
+    });
+    const path = points.map((p) => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
+    const yTop = padT;
+    const yBottom = h - padB;
+    const xAxis = points.map((p, i) => {
+      if (!history[i]) return '';
+      const label = new Date(history[i].scraped_at).toLocaleDateString('en-MY', { month: 'short', day: 'numeric' });
+      return '<text x="' + p[0].toFixed(1) + '" y="' + (h - 10) + '" fill="#4e5a6a" font-size="10" text-anchor="middle">' + esc(label) + '</text>';
+    }).join('');
+    const yTicks = [min, (min + max) / 2, max].map((v) => {
+      const y = yBottom - ((v - min) / range) * (yBottom - yTop);
+      return '<text x="10" y="' + (y + 3).toFixed(1) + '" fill="#4e5a6a" font-size="10">' + esc(formatMoney(v)) + '</text>';
+    }).join('');
+    return '<svg viewBox="0 0 ' + w + ' ' + h + '" width="100%" height="220" preserveAspectRatio="none">'
+      + '<rect x="0" y="0" width="' + w + '" height="' + h + '" fill="#13161b" rx="8" />'
+      + '<line x1="' + padL + '" y1="' + yBottom + '" x2="' + (w - padR) + '" y2="' + yBottom + '" stroke="#2f3640" />'
+      + '<line x1="' + padL + '" y1="' + yTop + '" x2="' + padL + '" y2="' + yBottom + '" stroke="#2f3640" />'
+      + '<polyline fill="none" stroke="#eea12f" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" points="' + path + '" />'
+      + yTicks + xAxis
+      + '</svg>';
+  }
+
+  async function api(path, method, body) {
+    const options = { method: method || 'GET', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin' };
+    if (body) options.body = JSON.stringify(body);
+    const res = await fetch('/api/tracker' + path, options);
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  }
+
+  function setState(patch) {
+    Object.assign(state, patch);
+    render();
+  }
+
+  function saveLocalUrls(urls) {
+    localStorage.setItem(LS_KEY, JSON.stringify(urls));
+  }
+
+  async function loadUrls() {
+    const local = JSON.parse(localStorage.getItem(LS_KEY) || '[]');
+    const localUrls = Array.isArray(local) ? local : [];
+    setState({ urls: localUrls });
+    try {
+      const remote = await api('/urls');
+      if (Array.isArray(remote.urls) && remote.urls.length) {
+        setState({ urls: remote.urls });
+        saveLocalUrls(remote.urls);
+      }
+    } catch (_) {}
+  }
+
+  async function loadProducts() {
+    try {
+      const data = await api('/products');
+      setState({ rows: Array.isArray(data) ? data : [], error: '' });
+    } catch (e) {
+      setState({ error: 'Failed to load products: ' + e.message });
+    }
+  }
+
+  async function loadHistory(url) {
+    if (state.historyByUrl[url]) return;
+    try {
+      const history = await api('/history?url=' + encodeURIComponent(url));
+      state.historyByUrl[url] = history;
+      render();
+    } catch (e) {
+      setState({ error: 'History load failed: ' + e.message });
+    }
+  }
+
+  function addFromTextarea() {
+    const incoming = state.urlInput.split(/\r?\n/);
+    setState({ urls: normalizeUrlList(state.urls.concat(incoming)), urlInput: '' });
+  }
+
+  function removeUrl(target) {
+    setState({ urls: state.urls.filter((u) => u !== target) });
+  }
+
+  async function saveUrls() {
+    const cleaned = normalizeUrlList(state.urls);
+    setState({ urls: cleaned });
+    saveLocalUrls(cleaned);
+    try {
+      await api('/urls', 'POST', { urls: cleaned });
+      setState({ error: '' });
+    } catch (e) {
+      setState({ error: 'Saved locally only. API save failed: ' + e.message });
+    }
+  }
+
+  async function importTxt(file) {
+    const text = await file.text();
+    setState({ urls: normalizeUrlList(state.urls.concat(text.split(/\r?\n/))) });
+  }
+
+  async function runSync() {
+    setState({ status: 'syncing' });
+    try {
+      await saveUrls();
+      const result = await api('/sync', 'POST', {});
+      const recent = Array.isArray(result.recent) ? result.recent : [];
+      const summary = result.captured != null
+        ? 'Captured ' + result.captured + ' row(s). '
+        : '';
+      setState({
+        status: 'idle',
+        error: '',
+        syncSummary: summary + (recent.length ? ('Latest: ' + recent.map((r) => r.product_name || r.url).join(' | ')) : 'No extracted rows returned.'),
+        syncRecent: recent,
+      });
+      await loadProducts();
+    } catch (e) {
+      let detail = e.message;
+      try {
+        const parsed = JSON.parse(e.message);
+        if (parsed && parsed.detail) detail = JSON.stringify(parsed.detail, null, 2);
+      } catch (_) {}
+      setState({ status: 'error', error: 'Sync failed. You can run manually: python shopee_tracker.py (' + detail + ')' });
+    }
+  }
+
+  async function toggleExpand(url) {
+    const next = state.expanded === url ? '' : url;
+    state.expanded = next;
+    render();
+    if (!next) return;
+    await loadHistory(next);
+  }
+
+  function trendLabel(row) {
+    const current = row.sale_price ?? row.original_price;
+    const previous = row.previous_price;
+    if (previous != null && current != null) {
+      if (current < previous) return { label: '↓ Down', cls: 'down' };
+      if (current > previous) return { label: '↑ Up', cls: 'up' };
+    }
+    return { label: 'Flat', cls: 'flat' };
+  }
+
+  function render() {
+    const lastSynced = state.rows.length ? minutesAgo(state.rows.map((r) => r.last_checked).filter(Boolean).sort().reverse()[0]) : null;
+    const rowsHtml = state.rows.length ? state.rows.map((row) => {
+      const trend = trendLabel(row);
+      return '<tr class="clickable ' + (row.price_drop ? 'drop' : '') + '" data-url="' + esc(row.url) + '">'
+        + '<td>' + esc(row.product_name || '-') + '</td>'
+        + '<td><div>' + esc(row.seller || '-') + '</div><div class="sub">' + esc(row.seller_location || '-') + '</div></td>'
+        + '<td class="price">' + esc(formatMoney(row.original_price)) + '</td>'
+        + '<td class="price">' + esc(formatMoney(row.sale_price)) + '</td>'
+        + '<td class="price">' + esc(formatMoney(row.shipping_fee)) + '</td>'
+        + '<td>' + esc(row.stock_quantity ?? '-') + '</td>'
+        + '<td class="sub">' + esc(row.last_checked ? new Date(row.last_checked).toLocaleString('en-MY') : '-') + '</td>'
+        + '<td><span class="trend ' + trend.cls + '">' + trend.label + '</span>'
+        + '<div style="width:110px;height:30px;margin-top:4px">' + sparklineSvg(row.sparkline) + '</div></td>'
+        + '</tr>'
+        + (state.expanded === row.url ? '<tr class="expand"><td colspan="8"><div style="padding:10px 0">' + historyChartSvg(state.historyByUrl[row.url] || []) + '</div></td></tr>' : '');
+    }).join('') : '';
+
+    const emptyUrls = !state.urls.length ? '<div class="sub">No URLs yet. Add at least one URL to start tracking.</div>' : '';
+    const emptyData = !state.urls.length
+      ? '<div class="empty"><h3>Start Your Tracker</h3><p>Add Shopee product URLs in URL Manager, then press <span class="link">Save URL List</span> and <span class="link">Run Sync</span>.</p></div>'
+      : !state.rows.length
+        ? '<div class="empty"><h3>No Price Data Yet</h3><p>Run your first sync to fetch product details and build price history.</p></div>'
+        : '';
+
+    const syncPreview = state.syncSummary || state.syncRecent.length
+      ? '<div style="padding:12px 14px;border-bottom:1px solid var(--b1);background:rgba(238,161,47,.05)">'
+        + '<div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--mu);margin-bottom:6px">Sync Result</div>'
+        + '<div style="font-family:var(--mono);font-size:11px;color:#e8f0f8;white-space:pre-wrap">' + esc(state.syncSummary || 'No summary returned.') + '</div>'
+        + (state.syncRecent.length ? '<div style="margin-top:10px;display:flex;flex-direction:column;gap:6px">' + state.syncRecent.map((r) => '<div style="font-family:var(--mono);font-size:11px;color:var(--tx)">• ' + esc((r.product_name || 'Unknown') + ' | ' + formatMoney(r.sale_price ?? r.original_price) + ' | ' + (r.seller || 'N/A')) + '</div>').join('') + '</div>' : '')
+        + '</div>'
+      : '';
+
+    const cookiePanel = '<div style="padding:12px 14px;border-bottom:1px solid var(--b1);background:rgba(37,212,200,.04)">'
+      + '<div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--mu);margin-bottom:6px">Cookie Session</div>'
+      + '<div class="sub">This tracker uses <span style="color:#fff">shopee_cookies.json</span> only. If the file exists, sync will use it automatically.</div>'
+      + '</div>';
+
+    root.innerHTML = ''
+      + '<div class="app">'
+      + '<section class="panel">'
+      + '<h2>URL Manager</h2>'
+      + '<div class="panel-body">'
+      + '<textarea id="urlInput" class="input" rows="6" placeholder="Paste Shopee product URLs, one per line">' + esc(state.urlInput) + '</textarea>'
+      + '<div class="actions">'
+      + '<button class="btn" id="addUrlsBtn">Add URLs</button>'
+      + '<label class="btn" style="display:inline-flex;align-items:center">Import .txt<input id="importFile" type="file" accept=".txt,text/plain" style="display:none" /></label>'
+      + '<button class="btn btn-ac" id="saveUrlsBtn">Save URL List</button>'
+      + '</div>'
+      + '<div class="url-list">'
+      + state.urls.map((u) => '<div class="url-row"><span title="' + esc(u) + '">' + esc(u) + '</span><button data-remove="' + esc(u) + '">Remove</button></div>').join('')
+      + emptyUrls
+      + '</div>'
+      + '</div>'
+      + '</section>'
+      + '<section class="panel">'
+      + '<div class="header">'
+      + '<div><h1>Shopee Tracker</h1><div class="sub">Last synced: ' + (lastSynced == null ? 'Never' : lastSynced + ' minute(s) ago') + '</div></div>'
+      + '<div style="display:flex;align-items:center;gap:8px"><span class="status ' + esc(state.status) + '">' + esc(state.status) + '</span><button class="btn btn-ac" id="runSyncBtn">Run Sync</button></div>'
+      + '</div>'
+      + cookiePanel
+      + syncPreview
+      + (state.error ? '<div style="padding:10px 14px;color:#f0a500;font-family:var(--mono);font-size:11px">' + esc(state.error) + '</div>' : '')
+      + emptyData
+      + (state.rows.length ? '<div class="tbl-wrap"><table><thead><tr><th>Product Name</th><th>Seller</th><th>Original Price</th><th>Sale Price</th><th>Shipping</th><th>Stock</th><th>Last Checked</th><th>Trend</th></tr></thead><tbody>' + rowsHtml + '</tbody></table></div>' : '')
+      + '</section>'
+      + '</div>';
+
+    const urlInput = root.querySelector('#urlInput');
+    if (urlInput) {
+      urlInput.value = state.urlInput;
+      urlInput.oninput = (e) => setState({ urlInput: e.target.value });
+    }
+    const addBtn = root.querySelector('#addUrlsBtn');
+    if (addBtn) addBtn.onclick = addFromTextarea;
+    const saveBtn = root.querySelector('#saveUrlsBtn');
+    if (saveBtn) saveBtn.onclick = saveUrls;
+    const runBtn = root.querySelector('#runSyncBtn');
+    if (runBtn) runBtn.onclick = runSync;
+    const importFile = root.querySelector('#importFile');
+    if (importFile) importFile.onchange = async (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (file) await importTxt(file);
+      e.target.value = '';
+    };
+    root.querySelectorAll('[data-remove]').forEach((btn) => {
+      btn.onclick = () => removeUrl(btn.getAttribute('data-remove'));
+    });
+    root.querySelectorAll('tr.clickable[data-url]').forEach((tr) => {
+      tr.onclick = () => toggleExpand(tr.getAttribute('data-url'));
+    });
+  }
+
+  loadUrls();
+  loadProducts();
+  render();
+})();
+</script>
+</body>
+</html>

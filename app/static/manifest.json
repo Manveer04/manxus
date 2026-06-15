@@ -1,0 +1,17 @@
+{
+  "name": "Manzill InvSync",
+  "short_name": "InvSync",
+  "display": "standalone",
+  "theme_color": "#0b0d10",
+  "background_color": "#0b0d10",
+  "start_url": "/",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/static/icon-placeholder.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

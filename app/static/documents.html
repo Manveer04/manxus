@@ -1,0 +1,1438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DocFlow - Invoice, Receipt & PO Builder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f12;
+    --surface: #151820;
+    --surface-2: #11141b;
+    --border: #252a37;
+    --border-2: #2f3547;
+    --text: #cbd2df;
+    --muted: #748099;
+    --accent: #f59e0b;
+    --ok: #22c55e;
+    --danger: #ef4444;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'IBM Plex Sans', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: radial-gradient(circle at 20% -10%, rgba(245, 158, 11, .18), transparent 38%), var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+  }
+
+  nav {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--border);
+    background: #0b0d11;
+    position: sticky;
+    top: 0;
+    z-index: 30;
+  }
+  .nav-brand {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: .08em;
+    color: #fff;
+    margin-right: 12px;
+  }
+  .nav-brand span { color: var(--accent); }
+  .nav-link {
+    text-decoration: none;
+    color: var(--text);
+    border: 1px solid var(--border-2);
+    border-radius: 999px;
+    padding: 6px 11px;
+    font-size: 12px;
+  }
+  .nav-link:hover { border-color: var(--accent); color: #fff; }
+  .nav-link.active { background: rgba(245, 158, 11, .16); border-color: var(--accent); color: #fff; }
+
+  .page {
+    padding: 18px 20px 28px;
+  }
+
+  .page-head {
+    margin-bottom: 14px;
+  }
+  .title {
+    font-family: var(--mono);
+    font-size: 21px;
+    letter-spacing: .04em;
+    color: #fff;
+  }
+  .subtitle {
+    margin-top: 4px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 410px minmax(0, 1fr);
+    gap: 16px;
+    align-items: start;
+  }
+
+  .panel {
+    background: linear-gradient(180deg, var(--surface), var(--surface-2));
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 16px 34px rgba(0,0,0,.28);
+  }
+
+  .panel-head {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: .08em;
+    color: #fff;
+    text-transform: uppercase;
+  }
+
+  .panel-body {
+    padding: 12px;
+    display: grid;
+    gap: 10px;
+  }
+
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .field {
+    display: grid;
+    gap: 4px;
+  }
+
+  label {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: .04em;
+    text-transform: uppercase;
+  }
+
+  input, textarea, select, button {
+    font-family: var(--sans);
+  }
+
+  input, textarea, select {
+    width: 100%;
+    border-radius: 8px;
+    border: 1px solid var(--border-2);
+    background: #0f131b;
+    color: var(--text);
+    padding: 8px 10px;
+    font-size: 13px;
+    outline: none;
+  }
+
+  textarea { resize: vertical; min-height: 72px; }
+
+  input:focus, textarea:focus, select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(245, 158, 11, .2);
+  }
+
+  .tiny {
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .btn {
+    border: 1px solid var(--border-2);
+    background: #111723;
+    color: var(--text);
+    border-radius: 999px;
+    padding: 8px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .btn:hover { border-color: var(--accent); color: #fff; }
+  .btn-accent {
+    background: rgba(245, 158, 11, .18);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  .btn-ok {
+    border-color: #1f8a47;
+    background: rgba(34, 197, 94, .14);
+    color: #d3ffe4;
+  }
+  .btn-danger {
+    border-color: #8f2e2e;
+    background: rgba(239, 68, 68, .12);
+    color: #ffd6d6;
+  }
+
+  .btn-spinner {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    margin-right: 6px;
+    border: 2px solid rgba(255, 255, 255, 0.35);
+    border-top-color: #ffffff;
+    border-radius: 50%;
+    animation: spin .75s linear infinite;
+    vertical-align: -2px;
+  }
+
+  .pdf-loading-overlay {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(7, 9, 12, 0.58);
+    backdrop-filter: blur(2px);
+    z-index: 9999;
+  }
+
+  .pdf-loading-card {
+    min-width: 220px;
+    padding: 14px 18px;
+    border-radius: 10px;
+    background: #0f141c;
+    border: 1px solid var(--border-2);
+    color: #e8edf8;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .pdf-loading-spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.32);
+    border-top-color: #ffffff;
+    border-radius: 50%;
+    animation: spin .75s linear infinite;
+    flex-shrink: 0;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .item-row {
+    display: grid;
+    grid-template-columns: 2fr .75fr .9fr .9fr auto;
+    gap: 8px;
+    align-items: end;
+  }
+
+  .item-row .field label { font-size: 10px; }
+
+  .preview-wrap {
+    padding: 8px;
+  }
+
+  .paper {
+    width: 210mm;
+    min-height: 297mm;
+    margin: 0 auto;
+    background: #fff;
+    color: #222;
+    box-shadow: 0 10px 30px rgba(0,0,0,.35);
+    border-radius: 2px;
+    padding: 14mm 12mm 16mm;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .doc-header-image {
+    width: 100%;
+    margin: 0 0 5mm;
+    max-height: 40mm;
+    object-fit: contain;
+    object-position: left center;
+    display: none;
+  }
+
+  .doc-top {
+    margin-bottom: 8px;
+  }
+
+  .receipt-mode .doc-top {
+    display: flex;
+    flex-direction: column;
+    gap: 0px;
+  }
+
+  .receipt-mode .doc-kind {
+    order: 1;
+    margin: 0 0 2px;
+  }
+
+  .receipt-mode .doc-meta-line.primary-meta {
+    order: 2;
+  }
+
+  .receipt-mode .to-block {
+    padding-top: 8px;
+  }
+
+  .receipt-mode .to-title {
+    display: none;
+  }
+
+  .receipt-mode .sign-box {
+    display: none;
+  }
+
+  .doc-meta-line {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    font-size: 13px;
+    margin-bottom: 8px;
+  }
+
+  .doc-meta-line > div:last-child {
+    text-align: right;
+  }
+
+  .doc-kind {
+    font-size: 30px;
+    letter-spacing: .06em;
+    font-weight: 700;
+    color: #111;
+    text-transform: uppercase;
+    margin: 10px 0 10px;
+    text-align: center;
+  }
+
+  .company-name {
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+
+  .company-details, .meta-line {
+    white-space: pre-line;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .to-block {
+    margin-bottom: 10px;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .to-title {
+    font-weight: 700;
+    margin-bottom: 3px;
+  }
+
+  .to-name {
+    font-weight: 700;
+  }
+
+  .item-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    margin-bottom: 10px;
+  }
+
+  .item-table th,
+  .item-table td {
+    border: 1px solid #222;
+    padding: 5px 6px;
+    vertical-align: top;
+  }
+
+  .item-table th {
+    background: #f3f3f3;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 11px;
+  }
+
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+
+  .totals {
+    margin-left: auto;
+    width: 74mm;
+    border-collapse: collapse;
+    font-size: 12px;
+    margin-bottom: 12px;
+  }
+
+  .totals-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0;
+  }
+
+  .paid-chop {
+    border: 3px double rgba(180, 24, 24, 0.78);
+    color: rgba(170, 20, 20, 0.86);
+    border-radius: 12px;
+    width: 36mm;
+    height: 22mm;
+    padding: 2px 4px;
+    text-align: center;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    transform: rotate(-6deg);
+    transform-origin: center;
+    background:
+      radial-gradient(circle at 30% 28%, rgba(180, 24, 24, 0.12), transparent 52%),
+      radial-gradient(circle at 68% 70%, rgba(180, 24, 24, 0.08), transparent 48%),
+      rgba(255, 255, 255, 0.86);
+    box-shadow:
+      0 0 0 1px rgba(180, 24, 24, 0.35) inset,
+      0 0 0 2px rgba(180, 24, 24, 0.18) inset;
+    filter: saturate(1.1) contrast(1.05);
+    margin: 0;
+    display: none;
+    flex-shrink: 0;
+  }
+
+  .paid-chop .paid-word {
+    display: block;
+    font-size: 25px;
+    line-height: 1;
+    font-weight: 800;
+    letter-spacing: .08em;
+    text-shadow: 0 1px 0 rgba(120, 14, 14, 0.25);
+  }
+
+  .paid-chop .paid-date {
+    display: block;
+    margin-top: 1px;
+    font-size: 10px;
+    letter-spacing: .04em;
+    font-weight: 600;
+  }
+
+  .totals td {
+    border: 1px solid #222;
+    padding: 4px 6px;
+  }
+
+  .totals td:first-child { background: #f7f7f7; font-weight: 700; }
+  .totals tr:first-child td {
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  .footer-row {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .remarks {
+    width: 100%;
+    min-height: 24mm;
+    padding-top: 2px;
+    font-size: 12px;
+    white-space: pre-line;
+    line-height: 1.6;
+    margin-bottom: 3mm;
+  }
+
+  .sign-box {
+    width: 100%;
+    min-height: 22mm;
+    display: flex;
+    justify-content: flex-end;
+    align-items: flex-start;
+  }
+
+  .stamp {
+    position: static;
+    max-height: 30mm;
+    max-width: 70mm;
+    object-fit: contain;
+    display: none;
+  }
+
+  #mobileViewModeActions {
+    display: none;
+  }
+
+  @media(max-width: 1360px) {
+    .layout { grid-template-columns: 1fr; }
+    .preview-wrap { overflow-x: auto; }
+    .paper { transform-origin: top left; }
+  }
+
+  @media(max-width: 760px) {
+    nav { padding: 10px 10px; overflow-x: auto; }
+    .page { padding: 10px; }
+    .grid-2, .item-row { grid-template-columns: 1fr; }
+    .paper {
+      width: 100%;
+      min-height: auto;
+      padding: 12px;
+    }
+    .doc-header-image {
+      width: 100%;
+      margin: 0 0 10px;
+      max-height: 150px;
+    }
+    .doc-meta-line { grid-template-columns: 1fr; }
+    .doc-meta-line > div:last-child { text-align: left; }
+    .totals { width: 100%; }
+    .paid-chop {
+      width: 32mm;
+      height: 20mm;
+      margin: 3px 0 0 auto;
+    }
+    .footer-row { display: block; }
+    .sign-box { justify-content: flex-start; }
+
+    #mobileViewModeActions {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+      padding: 0 2px;
+      flex-wrap: wrap;
+    }
+
+    #mobileViewModeActions .btn {
+      flex: 1 1 0;
+      min-width: 0;
+      font-size: 12px;
+      padding: 12px 14px;
+    }
+  }
+
+  @media print {
+    @page {
+      size: A4 portrait;
+      margin: 0;
+    }
+
+    body {
+      background: #fff;
+      min-height: auto;
+    }
+    nav, .page-head, .panel, #viewModeToolbar {
+      display: none !important;
+    }
+    .page {
+      padding: 0;
+      margin: 0;
+      max-width: none;
+    }
+    .layout {
+      display: block;
+    }
+    .preview-wrap {
+      padding: 0 !important;
+      margin: 0 !important;
+      overflow: visible !important;
+      display: block !important;
+      justify-content: flex-start !important;
+    }
+    .paper {
+      width: 210mm;
+      min-height: auto !important;
+      height: auto;
+      box-shadow: none;
+      margin: 0 auto !important;
+      border-radius: 0;
+      break-after: avoid-page;
+      page-break-after: avoid;
+    }
+
+    body.view-mode-a4 .paper {
+      min-height: auto !important;
+    }
+  }
+
+  /* Keep view mode visually identical to A4, even on mobile screens. */
+  body.view-mode-a4 .paper {
+    width: 210mm !important;
+    min-height: 297mm !important;
+    padding: 14mm 12mm 16mm !important;
+  }
+
+  body.view-mode-a4 .doc-header-image {
+    margin: 0 0 5mm !important;
+    max-height: 40mm !important;
+  }
+
+  body.view-mode-a4 .doc-meta-line {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  body.view-mode-a4 .doc-meta-line > div:last-child {
+    text-align: right !important;
+  }
+
+  body.view-mode-a4 .totals {
+    width: 74mm !important;
+  }
+
+  body.view-mode-a4 .footer-row {
+    display: flex !important;
+  }
+
+  body.view-mode-a4 .sign-box {
+    justify-content: flex-end !important;
+  }
+
+  body.view-mode-a4 .paid-chop {
+    width: 36mm !important;
+    height: 22mm !important;
+    margin: 0 !important;
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand">MANZILL <span>GLOBE</span></div>
+  <a href="/" class="nav-link">InvSync</a>
+  <a href="/financials" class="nav-link">RevLens</a>
+  <a href="/purchases" class="nav-link">ProcSync</a>
+  <a href="/documents" class="nav-link active">DocFlow</a>
+</nav>
+
+<div class="page">
+  <div class="page-head">
+    <div class="title">DocFlow</div>
+    <div id="pageSubtitle" class="subtitle">Build Invoice, Receipt and Purchase Order templates with live preview and PDF download.</div>
+    <div id="viewModeNotice" style="display:none;margin-top:10px;padding:10px;background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.3);border-radius:6px;color:#d3ffe4;font-size:12px;">
+      📄 <strong>View Mode:</strong> Displaying saved document. Use the button below to download PDF.
+    </div>
+  </div>
+
+  <div id="viewModeActions" style="display:none;margin-bottom:14px;gap:8px;flex-wrap:wrap;">
+    <button id="btnViewDownload" class="btn btn-ok" onclick="downloadDocument(this)" type="button" style="font-size:12px;padding:10px 14px;">⬇️ Download PDF</button>
+    <button id="btnViewSendEmail" class="btn" onclick="sendDocumentEmail(this)" type="button" style="font-size:12px;padding:10px 14px;">✉️ Send Email</button>
+  </div>
+
+  <div id="loadingIndicator" style="display:none;text-align:center;padding:40px;color:var(--muted);">
+    <div style="font-size:14px;">⏳ Loading document...</div>
+  </div>
+
+  <div id="pdfLoadingOverlay" class="pdf-loading-overlay" aria-live="polite" aria-busy="true">
+    <div class="pdf-loading-card">
+      <span class="pdf-loading-spinner" aria-hidden="true"></span>
+      <span>Preparing PDF...</span>
+    </div>
+  </div>
+
+  <div id="mainLayout" class="layout">
+    <div>
+      <section class="panel">
+        <div class="panel-head">Document Setup</div>
+        <div class="panel-body">
+          <div class="grid-2">
+            <div class="field">
+              <label for="docType">Document Type</label>
+              <select id="docType">
+                <option value="invoice">Invoice</option>
+                <option value="receipt">Receipt</option>
+                <option value="purchase_order">Purchase Order</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="currency">Currency</label>
+              <input id="currency" value="MYR" />
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div class="field"><label for="runningNo">Running No</label><input id="runningNo" type="number" min="1" step="1" value="1" /></div>
+            <div class="field"><label for="docNo">Document No</label><input id="docNo" value="MGT 2603/001" readonly /></div>
+          </div>
+
+          <div class="field"><label for="docDate">Document Date</label><input id="docDate" type="date" /></div>
+          <div class="field" id="deliveryDateField" style="display:none;"><label for="deliveryDate">Delivery Date (PO)</label><input id="deliveryDate" type="date" /></div>
+
+          <div id="receiptDateFields" style="display:none;">
+            <div class="field"><label for="receiptDate">Receipt Date (Date Paid)</label><input id="receiptDate" type="date" /></div>
+          </div>
+
+          <div id="otherChopFields" style="display:none;">
+            <div class="field"><label for="paidWord">Receipt Chop Text</label><input id="paidWord" value="PAID" /></div>
+          </div>
+
+          <div class="toolbar">
+            <button id="btnPrint" class="btn btn-accent" type="button">Print / Save PDF</button>
+            <button id="btnDownloadPdf" class="btn btn-ok" type="button">Download PDF</button>
+            <button id="btnReset" class="btn" type="button">Reset Sample</button>
+          </div>
+          <div class="tiny">Tip: If your browser blocks download PDF generation, use Print / Save PDF.</div>
+        </div>
+      </section>
+
+      <section class="panel" style="margin-top:12px;">
+        <div class="panel-head">Company & Party</div>
+        <div class="panel-body">
+
+          <div class="field"><label for="buyerName">Bill To / Vendor Name</label><input id="buyerName" value="Customer Name Sdn Bhd" /></div>
+          <div class="field"><label for="buyerInfo">Bill To / Vendor Address</label><textarea id="buyerInfo">No. 123, Jalan Buyer
+50000 Kuala Lumpur
+Malaysia</textarea></div>
+          <div class="field"><label for="attnTo">Attn To (optional)</label><input id="attnTo" placeholder="Purchasing Department" /></div>
+        </div>
+      </section>
+
+      <section class="panel" style="margin-top:12px;">
+        <div class="panel-head">Line Items</div>
+        <div class="panel-body">
+          <div id="itemEditor"></div>
+          <div class="toolbar">
+            <button id="btnAddItem" type="button" class="btn">+ Add Item</button>
+            <button id="btnRemoveItem" type="button" class="btn btn-danger">Remove Last</button>
+          </div>
+
+          <div class="field"><label for="remarks">Remarks</label><textarea id="remarks">- All payment are payable to Manzill Globe Trading.
+- All cheques should cross and made payable to Manzill Globe Trading
+- Goods sold are non-returnable and non-refundable
+- Account No : 564146655089 (MAYBANK)
+-  Address of Bank : MAYBANK RIVERCITY JALAN IPOH</textarea></div>
+        </div>
+      </section>
+
+      <section class="panel" style="margin-top:12px;">
+        <div class="panel-head">Header Image</div>
+        <div class="panel-body">
+          <div class="field"><label for="headerImage">Header Image (top banner)</label><input id="headerImage" type="file" accept="image/*" /></div>
+          <div class="tiny">Leave empty to use default header.</div>
+        </div>
+      </section>
+    </div>
+
+    <div class="preview-wrap">
+      <section class="paper" id="paper">
+        <img id="pvHeader" class="doc-header-image" alt="Header" />
+
+        <div class="doc-top">
+          <div class="doc-meta-line primary-meta">
+            <div><strong id="pvDateLabel">Date:</strong> <span id="pvDate"></span></div>
+            <div><strong id="pvDocNoLabel">Invoice No. :</strong> <span id="pvDocNo"></span></div>
+          </div>
+          <div class="doc-meta-line" id="pvDeliveryLine" style="display:none;">
+            <div><strong>Delivery Date :</strong> <span id="pvDeliveryDate">-</span></div>
+            <div></div>
+          </div>
+          <div id="pvDocKind" class="doc-kind">INVOICE</div>
+        </div>
+
+        <div class="to-block">
+          <div class="to-title" id="pvToTitle">To:</div>
+          <div id="pvBuyerName" class="to-name"></div>
+          <div id="pvBuyerInfo" class="company-details"></div>
+          <div id="pvAttnTo" class="company-details"></div>
+        </div>
+
+        <table class="item-table">
+          <thead>
+            <tr>
+              <th style="width:8%;">#</th>
+              <th>Description</th>
+              <th style="width:12%;" class="num">Qty</th>
+              <th style="width:16%;" class="num">Unit Price</th>
+              <th style="width:18%;" class="num">Amount</th>
+            </tr>
+          </thead>
+          <tbody id="pvItems"></tbody>
+        </table>
+
+        <div class="totals-wrap">
+          <table class="totals">
+            <tr><td>Total:</td><td class="num" id="pvGrand">0.00</td></tr>
+          </table>
+        </div>
+
+        <div class="footer-row">
+          <div id="pvRemarks" class="remarks"></div>
+          <div id="pvPaidChop" class="paid-chop" aria-label="Paid Chop">
+            <span id="pvPaidWord" class="paid-word">PAID</span>
+            <span id="pvPaidDate" class="paid-date">Date Paid: -</span>
+          </div>
+          <div class="sign-box">
+            <img id="pvChopSign" class="stamp" alt="Company Chop & Signature" />
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script>
+
+// Global helper functions for print and download - must be outside IIFE for inline onclick handlers
+function printDocument() {
+  window.print();
+}
+
+async function downloadDocument(triggerBtn) {
+  const setLoadingState = (loading, btn) => {
+    const overlay = document.getElementById('pdfLoadingOverlay');
+    if (overlay) {
+      overlay.style.display = loading ? 'flex' : 'none';
+    }
+
+    if (!btn) return;
+
+    if (!btn.dataset.originalLabel) {
+      btn.dataset.originalLabel = btn.innerHTML;
+    }
+
+    btn.disabled = !!loading;
+    btn.style.opacity = loading ? '0.7' : '';
+    btn.style.cursor = loading ? 'not-allowed' : '';
+    btn.innerHTML = loading
+      ? '<span class="btn-spinner" aria-hidden="true"></span>Preparing PDF...'
+      : (btn.dataset.originalLabel || 'Download PDF');
+  };
+
+  const resolveFilename = (response, fallback) => {
+    const disposition = response.headers.get('content-disposition') || '';
+    const utf8 = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+    if (utf8 && utf8[1]) {
+      try {
+        return decodeURIComponent(utf8[1]).replace(/[/\\?%*:|"<>]/g, '_');
+      } catch (_e) {
+        // fallback to standard filename parsing below
+      }
+    }
+    const plain = disposition.match(/filename="?([^";]+)"?/i);
+    if (plain && plain[1]) {
+      return plain[1].replace(/[/\\?%*:|"<>]/g, '_');
+    }
+    return fallback;
+  };
+
+  try {
+    if (window.__pdfDownloadBusy) return;
+    window.__pdfDownloadBusy = true;
+
+    const btn = triggerBtn || document.getElementById('btnViewDownload');
+    setLoadingState(true, btn);
+
+    const viewData = window.__viewDocData;
+    if (!viewData || !viewData.invoice) {
+      alert('Document data is not ready yet. Please wait a moment and try again.');
+      return;
+    }
+
+    const invoiceId = viewData.invoice.id;
+    const url = `/api/financials/invoices/${invoiceId}/pdf`;
+    const response = await fetch(url, { method: 'GET' });
+    if (!response.ok) {
+      throw new Error(`Failed to generate PDF (${response.status})`);
+    }
+
+    const blob = await response.blob();
+    const safeDocNo = String(viewData.invoice.invoice_number || `invoice-${invoiceId}`)
+      .replace(/\s+/g, '_')
+      .replace(/[/\\?%*:|"<>]/g, '_');
+    const filename = resolveFilename(response, `${safeDocNo}.pdf`);
+
+    const blobUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => window.URL.revokeObjectURL(blobUrl), 3000);
+  } catch (err) {
+    console.error('PDF download error:', err);
+    alert('Error generating PDF. Please refresh and try again.');
+  } finally {
+    window.__pdfDownloadBusy = false;
+    const btn = triggerBtn || document.getElementById('btnViewDownload');
+    setLoadingState(false, btn);
+  }
+}
+
+async function sendDocumentEmail(triggerBtn) {
+  const setLoadingState = (loading, btn) => {
+    if (!btn) return;
+
+    if (!btn.dataset.originalLabel) {
+      btn.dataset.originalLabel = btn.innerHTML;
+    }
+
+    btn.disabled = !!loading;
+    btn.style.opacity = loading ? '0.7' : '';
+    btn.style.cursor = loading ? 'not-allowed' : '';
+    btn.innerHTML = loading
+      ? '<span class="btn-spinner" aria-hidden="true"></span>Sending...'
+      : (btn.dataset.originalLabel || 'Send Email');
+  };
+
+  try {
+    if (window.__sendEmailBusy) return;
+    window.__sendEmailBusy = true;
+
+    const btn = triggerBtn || document.getElementById('btnViewSendEmail');
+    const viewData = window.__viewDocData;
+    if (!viewData || !viewData.invoice) {
+      alert('Document data is not ready yet. Please wait a moment and try again.');
+      return;
+    }
+
+    const previousRecipient = window.__lastInvoiceEmailRecipient || '';
+    const recipientInput = window.prompt(
+      'Enter recipient email address (for multiple recipients, separate with commas):',
+      previousRecipient
+    );
+    if (recipientInput === null) return;
+
+    const recipientEmail = recipientInput.trim();
+    if (!recipientEmail) {
+      alert('Recipient email is required.');
+      return;
+    }
+
+    window.__lastInvoiceEmailRecipient = recipientEmail;
+    setLoadingState(true, btn);
+
+    const invoiceId = viewData.invoice.id;
+    const response = await fetch(`/api/financials/invoices/${invoiceId}/email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recipient_email: recipientEmail })
+    });
+
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const detail = payload && payload.detail ? payload.detail : `HTTP ${response.status}`;
+      throw new Error(detail);
+    }
+
+    alert(`Email sent successfully to: ${recipientEmail}`);
+  } catch (err) {
+    console.error('Send email error:', err);
+    alert(`Failed to send email: ${err.message || err}`);
+  } finally {
+    window.__sendEmailBusy = false;
+    const btn = triggerBtn || document.getElementById('btnViewSendEmail');
+    setLoadingState(false, btn);
+  }
+}
+
+// Main initialization IIFE
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const itemEditor = $('itemEditor');
+
+  function applyViewModeA4Scale() {
+    if (!document.body.classList.contains('view-mode-a4')) return;
+
+    const paper = $('paper');
+    const previewWrap = document.querySelector('.preview-wrap');
+    if (!paper || !previewWrap) return;
+
+    // Keep canonical A4 dimensions in view mode; only scale uniformly for small screens.
+    paper.style.width = '210mm';
+    paper.style.minHeight = '297mm';
+    paper.style.transformOrigin = 'top center';
+    paper.style.margin = '0 auto';
+
+    const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
+    const isMobile = viewportWidth <= 760;
+    if (!isMobile) {
+      paper.style.transform = '';
+      previewWrap.style.overflowX = 'auto';
+      previewWrap.style.padding = '40px 20px';
+      return;
+    }
+
+    const horizontalPadding = 16;
+    const available = Math.max(280, viewportWidth - horizontalPadding);
+    const paperWidth = paper.offsetWidth || 794;
+    const scale = Math.min(1, available / paperWidth);
+
+    paper.style.transform = `scale(${scale})`;
+    previewWrap.style.overflowX = 'hidden';
+    previewWrap.style.padding = '16px 8px 20px';
+  }
+
+  const state = {
+    items: [
+      { description: 'Sample Product A', qty: 2, unitPrice: 45 },
+      { description: 'Sample Product B', qty: 1, unitPrice: 120 }
+    ],
+    images: { header: '' }
+  };
+
+  const INVOICE_REMARKS = '- All payment are payable to Manzill Globe Trading.\n- All cheques should cross and made payable to Manzill Globe Trading\n- Goods sold are non-returnable and non-refundable\n- Account No : 564146655089 (MAYBANK)\n-  Address of Bank : MAYBANK RIVERCITY JALAN IPOH';
+  const RECEIPT_REMARKS = '- Payment received with thanks.\n- This receipt acknowledges the amount received from the payer stated above.\n- Please retain this receipt for your records.';
+  const PO_REMARKS = '- Goods must be delivered in full and in good condition to the stated address. Partial deliveries require approval.\n- Submit invoice after delivery with PO number, or processing may be delayed.\n- Manzill Globe Trading may cancel the order if delivery is not made by the agreed date, unless prior notice is given';
+
+  function buildDocNo() {
+    const docType = $('docType').value;
+    const d = $('docDate').value ? new Date($('docDate').value + 'T00:00:00') : new Date();
+    const yy = String(d.getFullYear()).slice(-2);
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const run = String(Math.max(1, parseInt($('runningNo').value || '1', 10))).padStart(3, '0');
+    if (docType === 'purchase_order') return `PO/${yy}${mm}/${run}`;
+    if (docType === 'receipt') return `RCP/${yy}${mm}/${run}`;
+    return `MGT ${yy}${mm}/${run}`;
+  }
+
+  function formatMoney(v) {
+    const cur = ($('currency').value || 'MYR').trim();
+    const n = Number(v) || 0;
+    return `${cur} ${n.toFixed(2)}`;
+  }
+
+  function formatDate(iso) {
+    if (!iso) return '-';
+    const d = new Date(iso + 'T00:00:00');
+    if (Number.isNaN(d.getTime())) return iso;
+    return d.toLocaleDateString('en-GB');
+  }
+
+  function toNumber(v) {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  function renderItemEditor() {
+    itemEditor.innerHTML = '';
+    state.items.forEach((item, idx) => {
+      const row = document.createElement('div');
+      row.className = 'item-row';
+      row.innerHTML = `
+        <div class="field">
+          <label>Description</label>
+          <input data-k="description" data-i="${idx}" value="${escapeHtml(item.description)}" />
+        </div>
+        <div class="field">
+          <label>Qty</label>
+          <input data-k="qty" data-i="${idx}" type="number" step="0.01" value="${item.qty}" />
+        </div>
+        <div class="field">
+          <label>Unit Price</label>
+          <input data-k="unitPrice" data-i="${idx}" type="number" step="0.01" value="${item.unitPrice}" />
+        </div>
+        <div class="field">
+          <label>Amount</label>
+          <input value="${(toNumber(item.qty) * toNumber(item.unitPrice)).toFixed(2)}" readonly />
+        </div>
+        <button class="btn btn-danger" data-del="${idx}" type="button">X</button>
+      `;
+      itemEditor.appendChild(row);
+    });
+
+    itemEditor.querySelectorAll('input[data-k]').forEach((el) => {
+      el.addEventListener('input', onItemInput);
+    });
+    itemEditor.querySelectorAll('button[data-del]').forEach((el) => {
+      el.addEventListener('click', () => {
+        const i = Number(el.getAttribute('data-del'));
+        state.items.splice(i, 1);
+        if (!state.items.length) state.items.push({ description: '', qty: 1, unitPrice: 0 });
+        renderItemEditor();
+        renderPreview();
+      });
+    });
+  }
+
+  function onItemInput(e) {
+    const i = Number(e.target.getAttribute('data-i'));
+    const k = e.target.getAttribute('data-k');
+    if (k === 'qty' || k === 'unitPrice') {
+      state.items[i][k] = toNumber(e.target.value);
+    } else {
+      state.items[i][k] = e.target.value;
+    }
+    renderItemEditor();
+    renderPreview();
+  }
+
+  function escapeHtml(s) {
+    return String(s || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function wireSimpleInputs() {
+    [
+      'docType','currency','docDate','deliveryDate','runningNo',
+      'buyerName','buyerInfo','attnTo','remarks','paidWord','receiptDate'
+    ].forEach((id) => {
+      const el = $(id);
+      if (!el) return;
+      el.addEventListener('input', renderPreview);
+      el.addEventListener('change', renderPreview);
+    });
+
+    $('docType').addEventListener('change', () => {
+      const docType = $('docType').value;
+      const isPo = docType === 'purchase_order';
+      const isReceipt = docType === 'receipt';
+      
+      // Toggle field visibility
+      $('deliveryDateField').style.display = isPo ? 'block' : 'none';
+      $('receiptDateFields').style.display = isReceipt ? 'block' : 'none';
+      $('otherChopFields').style.display = isReceipt ? 'block' : 'none';
+      
+      if (docType === 'purchase_order') {
+        $('remarks').value = PO_REMARKS;
+      } else if (docType === 'receipt') {
+        $('remarks').value = RECEIPT_REMARKS;
+      } else {
+        $('remarks').value = INVOICE_REMARKS;
+      }
+      $('docNo').value = buildDocNo();
+      renderPreview();
+    });
+    $('docDate').addEventListener('change', () => {
+      $('docNo').value = buildDocNo();
+      renderPreview();
+    });
+    $('runningNo').addEventListener('input', () => {
+      $('docNo').value = buildDocNo();
+      renderPreview();
+    });
+
+    $('btnAddItem').addEventListener('click', () => {
+      state.items.push({ description: '', qty: 1, unitPrice: 0 });
+      renderItemEditor();
+      renderPreview();
+    });
+
+    $('btnRemoveItem').addEventListener('click', () => {
+      if (state.items.length > 1) {
+        state.items.pop();
+      } else {
+        state.items[0] = { description: '', qty: 1, unitPrice: 0 };
+      }
+      renderItemEditor();
+      renderPreview();
+    });
+
+    $('btnPrint').addEventListener('click', () => window.print());
+
+    $('btnDownloadPdf').addEventListener('click', async () => {
+      const paper = $('paper');
+      const filename = `${($('docNo').value || 'document').replace(/\s+/g, '_')}.pdf`;
+      if (window.html2pdf) {
+        const opt = {
+          margin: 0,
+          filename,
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+          pagebreak: { mode: ['avoid-all'] }
+        };
+        await html2pdf().set(opt).from(paper).save();
+      } else {
+        window.print();
+      }
+    });
+
+    $('btnReset').addEventListener('click', resetSample);
+
+    wireImageInput('headerImage', 'header', 'pvHeader');
+    
+    // Load default document images on startup
+    loadDefaultImages();
+  }
+
+  function wireImageInput(inputId, key, previewId) {
+    $(inputId).addEventListener('change', (e) => {
+      const f = e.target.files && e.target.files[0];
+      if (!f) return;
+      const r = new FileReader();
+      r.onload = () => {
+        state.images[key] = r.result;
+        const img = $(previewId);
+        img.src = r.result;
+        img.style.display = 'block';
+      };
+      r.readAsDataURL(f);
+    });
+  }
+
+  function loadDefaultImages() {
+    // Load default header image
+    const headerImg = $('pvHeader');
+    headerImg.src = '/api/documents/image/header.png';
+    headerImg.onload = () => { headerImg.style.display = 'block'; };
+    headerImg.onerror = () => { headerImg.style.display = 'none'; };
+
+    // Load default chop & signature combined image
+    const chopsignImg = $('pvChopSign');
+    chopsignImg.src = '/api/documents/image/chop_and_sign.png';
+    chopsignImg.onload = () => { chopsignImg.style.display = 'block'; };
+    chopsignImg.onerror = () => { chopsignImg.style.display = 'none'; };
+  }
+
+  function renderPreview() {
+    const docType = $('docType').value;
+    const isPo = docType === 'purchase_order';
+    const isReceipt = docType === 'receipt';
+    const docLabel = isPo ? 'PURCHASE ORDER' : (isReceipt ? 'RECEIPT' : 'INVOICE');
+    const issuedDate = new Date().toISOString().slice(0, 10);
+    const paidWord = ($('paidWord').value || 'PAID').trim();
+    const receiptDateVal = $('receiptDate').value || '';
+    const displayDate = isReceipt ? receiptDateVal : $('docDate').value;
+
+    // In view mode, keep server-issued number exactly as saved.
+    if (!window.__viewModeLockDocNo) {
+      $('docNo').value = buildDocNo();
+    }
+    $('paper').classList.toggle('receipt-mode', isReceipt);
+    $('pvDocKind').textContent = docLabel;
+    $('pvDocNoLabel').textContent = isPo ? 'P/O No. :' : (isReceipt ? 'Receipt No. :' : 'Invoice No. :');
+    $('pvDateLabel').textContent = isPo ? 'Issued Date :' : (isReceipt ? 'Issued Date :' : 'Date:');
+    $('pvToTitle').textContent = isPo ? 'Supplier:' : 'To:';
+    $('pvDocNo').textContent = $('docNo').value || '-';
+    $('pvDate').textContent = formatDate(isPo ? issuedDate : displayDate);
+    $('pvDeliveryLine').style.display = isPo ? 'grid' : 'none';
+    $('pvDeliveryDate').textContent = formatDate(($('deliveryDate') && $('deliveryDate').value) || '');
+    $('pvPaidWord').textContent = paidWord || 'PAID';
+    $('pvPaidDate').textContent = `Date Paid: ${formatDate(receiptDateVal)}`;
+    $('pvPaidChop').style.display = isReceipt ? 'inline-flex' : 'none';
+
+    $('pvBuyerName').textContent = $('buyerName').value || '';
+    $('pvBuyerInfo').textContent = $('buyerInfo').value || '';
+    const attn = ($('attnTo').value || '').trim();
+    $('pvAttnTo').textContent = attn ? `Attn to : ${attn}` : '';
+
+    const rows = [];
+    let subtotal = 0;
+    state.items.forEach((it, idx) => {
+      const qty = toNumber(it.qty);
+      const unit = toNumber(it.unitPrice);
+      const amt = qty * unit;
+      subtotal += amt;
+      rows.push(`
+        <tr>
+          <td class="num">${idx + 1}</td>
+          <td>${escapeHtml(it.description || '')}</td>
+          <td class="num">${qty.toFixed(2)}</td>
+          <td class="num">${formatMoney(unit)}</td>
+          <td class="num">${formatMoney(amt)}</td>
+        </tr>
+      `);
+    });
+    $('pvItems').innerHTML = rows.join('');
+
+    $('pvGrand').textContent = formatMoney(subtotal);
+
+    const remarksRaw = $('remarks').value || '-';
+    const remarkLines = remarksRaw.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+    const remarksHtml = remarkLines.map((line) => {
+      const escaped = escapeHtml(line);
+      const isBankLine = line.toLowerCase().includes('account no') || line.toLowerCase().includes('address of bank');
+      return isBankLine ? `<strong>${escaped}</strong>` : escaped;
+    }).join('<br>');
+    $('pvRemarks').innerHTML = remarksHtml;
+  }
+
+  function resetSample() {
+    $('docType').value = 'invoice';
+    $('currency').value = 'MYR';
+    $('runningNo').value = '1';
+
+    const today = new Date();
+    $('docDate').value = today.toISOString().slice(0, 10);
+    $('receiptDate').value = today.toISOString().slice(0, 10);
+    $('deliveryDate').value = '';
+    $('docNo').value = buildDocNo();
+    $('paidWord').value = 'PAID';
+
+    $('buyerName').value = 'Customer Name Sdn Bhd';
+    $('buyerInfo').value = 'No. 123, Jalan Buyer\n50000 Kuala Lumpur\nMalaysia';
+    $('attnTo').value = '';
+
+    $('remarks').value = INVOICE_REMARKS;
+
+    state.items = [
+      { description: 'Sample Product A', qty: 2, unitPrice: 45 },
+      { description: 'Sample Product B', qty: 1, unitPrice: 120 }
+    ];
+
+    state.images = { header: '' };
+    $('headerImage').value = '';
+
+    loadDefaultImages();
+    renderItemEditor();
+    renderPreview();
+  }
+
+  resetSample();
+  wireSimpleInputs();
+  
+  // Handle view mode for generated invoices and receipts
+  const urlParams = new URLSearchParams(window.location.search);
+  const viewMode = urlParams.get('view');
+  const invoiceId = urlParams.get('id');
+  
+  if ((viewMode === 'invoice' || viewMode === 'receipt') && invoiceId) {
+    loadDocumentViewMode(invoiceId, viewMode);
+  }
+  
+  async function loadDocumentViewMode(id, docType) {
+    try {
+      const response = await fetch(`/api/financials/invoices/${id}`);
+      if (!response.ok) throw new Error('Document not found');
+      
+      const invoice = await response.json();
+      const effectiveType = (invoice.doc_type || docType || 'invoice').toLowerCase();
+      
+      // Populate form with invoice/receipt data
+      window.__viewModeLockDocNo = true;
+      $('docNo').value = invoice.invoice_number;
+      $('docDate').value = invoice.invoice_date;
+      $('deliveryDate').value = invoice.due_date || '';
+      $('docType').value = effectiveType;
+      if ($('receiptDate')) $('receiptDate').value = invoice.invoice_date || '';
+      if ($('paidWord')) $('paidWord').value = 'PAID';
+      
+      const buyerCompany = (invoice.buyer?.company_name || '').trim();
+      const buyerName = (invoice.buyer?.name || '').trim();
+      $('buyerName').value = buyerCompany || buyerName;
+      $('buyerInfo').value = invoice.buyer?.address || '';
+      $('attnTo').value = buyerCompany ? buyerName : '';
+      $('remarks').value = invoice.remarks || '';
+      
+      // Load items - map API structure to state structure
+      state.items = (invoice.items || []).map(item => ({
+        description: item.description,
+        qty: item.quantity,
+        unitPrice: item.unit_price,
+        sku: item.sku
+      }));
+      
+      // Determine display title
+      const displayType = effectiveType === 'receipt' ? 'Receipt' : 'Invoice';
+
+      // Persist current view data for direct jsPDF generation.
+      window.__viewDocData = { invoice, docType: effectiveType };
+
+      // Force preview to stay in A4 layout mode (no mobile reflow changes).
+      document.body.classList.add('view-mode-a4');
+      
+      // Hide navbar for clean view mode
+      document.querySelector('nav').style.display = 'none';
+      
+      // Replace page-head content with toolbar
+      const pageHead = document.querySelector('.page-head');
+      const isMobileView = window.innerWidth <= 760;
+      pageHead.style.marginBottom = '0';
+      pageHead.style.margin = '0';
+      pageHead.style.padding = '0';
+      if (isMobileView) {
+        pageHead.innerHTML = `
+          <div style="padding: 16px 0 8px; color: white; display: grid; gap: 8px;">
+            <div style="font-weight: bold; font-size: 16px;">${displayType} #${invoice.invoice_number}</div>
+            <div style="color: var(--muted); font-size: 12px; line-height: 1.4;">Preview the saved document below. The action button is pinned at the bottom of the view.</div>
+          </div>
+        `;
+      } else {
+        pageHead.innerHTML = `
+          <div style="padding: 16px 24px; background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); color: white; display: flex; gap: 12px; align-items: center; justify-content: space-between; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">
+            <div style="font-weight: bold; font-size: 16px;">${displayType} #${invoice.invoice_number}</div>
+            <div style="display: flex; gap: 10px;">
+              <button type="button" onclick="downloadDocument(this)" style="padding: 10px 18px; background: rgba(255,255,255,0.9); color: #2196F3; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 14px;">⬇️ Download PDF</button>
+              <button type="button" onclick="sendDocumentEmail(this)" style="padding: 10px 18px; background: rgba(255,255,255,0.9); color: #2196F3; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 14px;">✉️ Send Email</button>
+            </div>
+          </div>
+        `;
+      }
+      
+      // Get references to layout parts
+      const page = document.querySelector('.page');
+      const mainLayout = document.getElementById('mainLayout');
+      
+      // Adjust page and layout for full-width view mode
+      page.style.cssText = 'padding: 0 !important; margin: 0 !important; max-width: none !important; width: 100% !important;';
+      
+      // Override grid layout completely
+      mainLayout.style.cssText = 'display: flex !important; flex-direction: column !important; grid-template-columns: auto !important; gap: 0 !important; width: 100% !important;';
+      
+      // Hide the left editor panel (first child of mainLayout)
+      mainLayout.children[0].style.display = 'none';
+      
+      // Make preview wrap full width and centered
+      const previewWrap = mainLayout.children[1];
+      previewWrap.style.cssText = 'width: 100%; margin: 0; padding: 40px 20px; overflow-x: auto; display: flex; justify-content: center;';
+
+      if (isMobileView) {
+        const mobileActions = document.createElement('div');
+        mobileActions.id = 'mobileViewModeActions';
+        mobileActions.innerHTML = `
+          <button type="button" class="btn btn-ok" onclick="downloadDocument(this)">⬇️ Download PDF</button>
+          <button type="button" class="btn" onclick="sendDocumentEmail(this)">✉️ Send Email</button>
+        `;
+        document.querySelector('.page').appendChild(mobileActions);
+      }
+      
+      // Disable form inputs in view mode
+      document.querySelectorAll('input, textarea, select').forEach(el => {
+        el.disabled = true;
+      });
+      
+      renderPreview();
+      applyViewModeA4Scale();
+      window.addEventListener('resize', applyViewModeA4Scale);
+      
+      // Signal to external agents (e.g., Playwright) that rendering is complete
+      window.__docRenderingComplete = true;
+      
+    } catch (error) {
+      alert('Error loading document: ' + error.message);
+    }
+  }
+  
+  function downloadDocumentPDF(docNumber) {
+    const element = document.querySelector('.paper') || document.body;
+    const opt = {
+      margin: 10,
+      filename: `document-${docNumber}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2 },
+      jsPDF: { orientation: 'portrait', unit: 'mm', format: 'a4' }
+    };
+    html2pdf().set(opt).from(element).save();
+  }
+})();
+</script>
+</body>
+</html>
