@@ -1,4 +1,5 @@
-<img src="Manxus_Logo.png" alt="Manxus Logo" width="50%">
+<img src="Manxus_Logo.png" alt="Manxus Logo" width="25%">
+
 # Manxus
 
 **Internal Operations Platform for Manzill Globe Trading**
