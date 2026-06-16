@@ -15,7 +15,7 @@
 
 ## Platform Overview
 
-The platform is composed of four integrated modules—**InvSync**, **ProcSync**, **DocFlow**, and **RevLens**—that work together to automate inventory management, order processing, document workflows, and financial analytics.
+The platform is composed of four integrated modules—**InvSync**, **ProcSync**, **DocFlow**, and **RevLens**—that work together to automate inventory management, order processing, document workflows, and financial analytics with **Manxus App** serving as the frontend dashboard.
 
 ---
 
@@ -107,6 +107,21 @@ Real-time visibility into profitability, COGS, and financial transactions.
 - ProductCost: Cost tracking per SKU
 - PurchaseBatch: Grouped supplier purchases
 - GeneratedInvoice & GeneratedPurchaseOrder: Templated document generation
+
+### 5. Manxus App — Frontend Dashboard
+
+**Repository:** [manxus-app](https://github.com/Manveer04/manxus-app)
+**Tech Stack:** React / FastAPI API Client
+
+Frontend dashboard for the Manxus platform. Manxus App provides the user interface for managing inventory, orders, documents, financial reports, sync logs, and platform alerts.
+
+**Key Features:**
+
+* View and manage product inventory
+* Trigger manual inventory syncs
+* Monitor marketplace orders and shipment status
+* Access invoices, purchase orders, and financial reports
+* Display sync history, errors, and platform alerts
 
 ---
 
