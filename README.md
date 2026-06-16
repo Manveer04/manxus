@@ -8,6 +8,9 @@
   Manxus is a comprehensive full-stack operations platform designed to streamline the daily operations of Manzill Globe Trading, a Malaysian online grocery retailer operating across Shopee, Lazada, and TikTok Shop.
 </div>
 
+### Manxus App
+**Repository:** [manxus-app](https://github.com/Manveer04/manxus-app)  
+**Tech Stack:** Python / FastAPI / React / etc.
 ---
 
 ## Platform Overview
