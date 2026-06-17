@@ -12,19 +12,6 @@
 
 Manxus is a FastAPI-based operations backend for inventory, orders, documents, and finance. This repository documents and ships the core application only. Legacy browser scraping is unsupported and removed from the supported deployment path because it was unreliable and created compliance risk.
 
-## Status
-
-| Module | Status | Notes |
-| --- | --- | --- |
-| Inventory | partial | Core data model and API surface are present; marketplace sync requires explicit API/token integration. |
-| Orders | partial | Order storage and notification flows are present; marketplace fetch/fulfillment depends on configured integrations. |
-| Documents | partial | Invoice and purchase-order workflows are present; browser-based rendering/export is not bundled. |
-| Finance | partial | Financial models, reports, and parsers are present. |
-| Shopee | API/token-based only | Supported only when credentials and token flow are configured. |
-| Lazada | API/token-based only | Supported only when credentials and token flow are configured. |
-| TikTok Shop | not bundled | No marketplace integration is bundled for this platform. |
-| yt-resolver | not bundled | Removed from the codebase. |
-
 ## Tech Stack
 
 FastAPI, SQLAlchemy, APScheduler, HTTPx, OpenPyXL, SQLite.
