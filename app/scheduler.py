@@ -4,9 +4,9 @@ from datetime import datetime, timedelta
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from app.database import SessionLocal
+from app.marketplace import marketplace_unavailable
 from app.sync_engine import SyncEngine
 from app.order_engine import OrderEngine
-from app.scrapers.shopee_api import _refresh_token, _load_token, SHOPS
 
 scheduler = AsyncIOScheduler()
 _engine       = SyncEngine()

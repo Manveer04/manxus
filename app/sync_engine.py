@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session
 
 from app.models import Product, PlatformListing, SyncLog, ProductGroup
 from app.sync_log_utils import get_latest_sync_log
-from app.scrapers import SCRAPERS
+from app.marketplace import marketplace_unavailable
 
 
 class SyncEngine:
@@ -139,7 +139,7 @@ class SyncEngine:
         started_at = time.time()
         print("[SyncEngine][pull_all] START")
         results = {}
-        for platform, ScraperClass in SCRAPERS.items():
+        for platform, ScraperClass in ():
             results[platform] = await self.pull_platform(platform, ScraperClass, db)
 
         # After all platforms pulled, detect sales and propagate deductions
@@ -180,7 +180,6 @@ class SyncEngine:
                 self._upsert_listing(db, platform, item)
                 result["pulled"] += 1
 
-            await scraper.save_session()
             self._log(db, platform=platform, action="read",
                       message=f"Pulled {len(items)} products")
         except Exception as e:
@@ -426,7 +425,7 @@ class SyncEngine:
                 for l in p.listings:
                     ctx_obj = group if group else p
                     push_qty = self._effective_push_stock(ctx_obj, new_master)
-                    ScraperClass = SCRAPERS.get(l.platform)
+                    ScraperClass = None
                     if not ScraperClass:
                         continue
                     scraper = ScraperClass()
@@ -447,7 +446,6 @@ class SyncEngine:
                         success = await scraper.update_stock(
                             l.platform_product_id, push_qty, l.platform_sku
                         )
-                        await scraper.save_session()
                         if success:
                             l.current_stock = push_qty
                             l.sync_status = "synced"
@@ -545,7 +543,7 @@ class SyncEngine:
             # Use bdq_override (group-level) if provided, else product-level
             effective_bdq = bdq_override if bdq_override is not None else (getattr(product, "backorder_display_qty", 0) or 0)
             push_qty = new_stock if new_stock > 0 else (effective_bdq if effective_bdq > 0 else 0)
-            ScraperClass = SCRAPERS.get(platform)
+            ScraperClass = None
             if not ScraperClass:
                 continue
 
@@ -565,7 +563,6 @@ class SyncEngine:
                 success = await scraper.update_stock(
                     listing.platform_product_id, push_qty, listing.platform_sku
                 )
-                await scraper.save_session()
             except Exception as e:
                 listing.error_message = str(e)
                 self._log(db, platform=platform, action="error",

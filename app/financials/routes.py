@@ -22,6 +22,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.database import SessionLocal
+from app.marketplace import marketplace_unavailable
 from app.financials.models import (
     FinancialTransaction,
     ProductCost,
@@ -214,123 +215,6 @@ def get_db():
         db.close()
 
 
-# ── FIFO cost computation ──────────────────────────────────────────────────────
-
-def _compute_fifo_cogs(db, txn_rows: list) -> Dict[int, float]:
-    """
-    Returns {txn.id: total_cogs_for_that_txn}.
-
-    Policy:
-      1) Existing/legacy orders (before switch date): use static RevLens ProductCost.
-      2) Future orders (on/after switch date): use ProcSync PurchaseBatch LIFO.
-      3) If no eligible batches exist, fall back to static RevLens ProductCost.
-
-    Switch date can be overridden with COGS_LIFO_SWITCH_DATE=YYYY-MM-DD.
-    """
-    switch_raw = (os.getenv("COGS_LIFO_SWITCH_DATE") or "").strip()
-    if switch_raw:
-        try:
-            lifo_switch_date = datetime.strptime(switch_raw, "%Y-%m-%d").date()
-        except ValueError:
-            lifo_switch_date = date.today()
-    else:
-        lifo_switch_date = date.today()
-
-    def _txn_effective_date(txn) -> date:
-        if txn.order_date:
-            return txn.order_date
-        if txn.settlement_date:
-            return txn.settlement_date
-        if getattr(txn, "created_at", None):
-            return txn.created_at.date()
-        return date.today()
-
-    cost_rows     = db.query(ProductCost).all()
-    all_batches   = (
-        db.query(PurchaseBatch)
-        .order_by(PurchaseBatch.purchase_date)
-        .all()
-    )
-
-    # products that have any purchase batch
-    batches_by_pid: Dict[int, list] = {}
-    for b in all_batches:
-        batches_by_pid.setdefault(b.product_id, []).append(b)
-
-    # resolve txn → ProductCost (for both FIFO and static fallback)
-    def _match_cost(txn):
-        for c in cost_rows:
-            if txn.sku and c.matches_sku(txn.platform, txn.sku):
-                return c
-        if txn.product_name:
-            name = txn.product_name.strip().lower()
-            for c in cost_rows:
-                if c.product_name.strip().lower() == name:
-                    return c
-        return None
-
-    # group future transactions by product_id (for LIFO batch costing)
-    txns_by_pid: Dict[int, list] = {}
-    legacy_txn_ids: set[int] = set()
-    txn_cost_map: Dict[int, "ProductCost"] = {}
-    for t in txn_rows:
-        c = _match_cost(t)
-        if c:
-            txn_cost_map[t.id] = c
-
-        tx_date = _txn_effective_date(t)
-        if tx_date < lifo_switch_date:
-            legacy_txn_ids.add(t.id)
-            continue
-
-        if c and c.product_id and c.product_id in batches_by_pid:
-            txns_by_pid.setdefault(c.product_id, []).append(t)
-
-    result: Dict[int, float] = {}
-
-    # LIFO assignment per product (future orders only)
-    for pid, txns in txns_by_pid.items():
-        batches   = batches_by_pid[pid]   # already sorted by date
-        remaining = [b.qty for b in batches]
-        sorted_txns = sorted(txns, key=lambda t: _txn_effective_date(t))
-
-        for t in sorted_txns:
-            qty_left  = t.qty or 1
-            txn_cost  = 0.0
-            tx_date = _txn_effective_date(t)
-
-            # Latest eligible batches first (LIFO), excluding future purchases.
-            eligible_idx = [
-                i for i, b in enumerate(batches)
-                if (not b.purchase_date) or (b.purchase_date <= tx_date)
-            ]
-            eligible_idx.sort(key=lambda i: ((batches[i].purchase_date or date.min), i), reverse=True)
-
-            for i in eligible_idx:
-                if remaining[i] <= 0:
-                    continue
-                take       = min(remaining[i], qty_left)
-                txn_cost  += take * batches[i].unit_cost
-                remaining[i] -= take
-                qty_left   -= take
-                if qty_left <= 0:
-                    break
-
-            # If unmatched qty remains, use most recent eligible batch cost as fallback.
-            if qty_left > 0 and eligible_idx:
-                last_idx = eligible_idx[0]
-                txn_cost += qty_left * batches[last_idx].unit_cost
-            result[t.id] = txn_cost
-
-    # Static RevLens ProductCost for legacy rows and unresolved future rows.
-    for t in txn_rows:
-        if t.id not in result:
-            c = txn_cost_map.get(t.id)
-            result[t.id] = (c.total_unit_cost if c else 0.0) * (t.qty or 1)
-
-    return result
-
-
 def _enrich_tiktok(db, txn_rows):
     """
     For TikTok transactions, resolve product_id stored in sku → seller SKU + product name
@@ -345,8 +229,7 @@ def _enrich_tiktok(db, txn_rows):
         nonlocal _scraper
         if _scraper is None:
             try:
-                from app.scrapers.tiktok import TikTokScraper
-                _scraper = TikTokScraper()
+                raise marketplace_unavailable("TikTok transaction enrichment", "tiktok")
             except Exception:
                 _scraper = None
         return _scraper
@@ -421,119 +304,7 @@ def _enrich_lazada(db, txn_rows):
     The Lazada items API returns one row *per unit sold*, so counting rows = real qty.
     Also fills in product_name and sku if missing.
     """
-    try:
-        from app.scrapers.lazada import LazadaScraper
-    except Exception:
-        print("[Enrich Lazada] Scraper module unavailable — skipping quantity enrichment")
-        return 0
-    from app.security_utils import secure_json_load
-    scraper = LazadaScraper()
-    # Prefer API token file; lazada_browser.json is cookie state, not OpenAPI token state.
-    token_files = [scraper.token_session_file, scraper.session_file]
-    for token_file in token_files:
-        if not token_file.exists():
-            continue
-        try:
-            saved = secure_json_load(token_file, secret_hint=scraper.app_secret)
-            scraper.access_token  = saved.get("access_token")
-            scraper.refresh_token = saved.get("refresh_token")
-            if scraper.access_token:
-                break
-        except Exception:
-            continue
-
-    # Last fallback: let scraper bootstrap from env/auth flow if configured.
-    if not scraper.access_token:
-        try:
-            _run_async(scraper.start())
-        except Exception:
-            pass
-
-    if not scraper.access_token:
-        print("[Enrich Lazada] No usable API access token — skipping quantity enrichment")
-        return 0
-
-    enriched = 0
-    skipped  = 0
-    for txn in txn_rows:
-        if txn.platform != "lazada":
-            continue
-        try:
-            params = scraper._base_params("/order/items/get", {"order_id": txn.order_id})
-            with httpx.Client() as client:
-                r = client.get(
-                    "https://api.lazada.com.my/rest/order/items/get",
-                    params=params,
-                    timeout=30,
-                )
-            data = r.json()
-            if data.get("code") == "E005":
-                # Token expired — try refresh once
-                import asyncio
-                _run_async(scraper._refresh_access_token())
-                params = scraper._base_params("/order/items/get", {"order_id": txn.order_id})
-                with httpx.Client() as client:
-                    r = client.get(
-                        "https://api.lazada.com.my/rest/order/items/get",
-                        params=params,
-                        timeout=30,
-                    )
-                data = r.json()
-            if data.get("code") not in (None, "0", 0):
-                print(f"[Enrich Lazada] API error for order {txn.order_id}: code={data.get('code')} msg={data.get('message')}")
-                skipped += 1
-                continue
-            items = data.get("data", []) or []
-            print(f"[Enrich Lazada] order={txn.order_id} api_items={len(items)} current_qty={txn.qty}")
-            if not items:
-                skipped += 1
-                continue
-
-            # Fill product_name and sku from first item if not already set
-            if not txn.sku or not txn.product_name:
-                for item in items:
-                    item_sku  = item.get("sku") or item.get("SellerSku") or item.get("seller_sku") or ""
-                    item_name = item.get("name", "")
-                    if not txn.sku and item_sku:
-                        txn.sku = item_sku
-                    if not txn.product_name and item_name:
-                        txn.product_name = item_name
-                    if txn.sku and txn.product_name:
-                        break
-
-            # Each API row = 1 unit; also check for an explicit quantity field
-            if txn.sku:
-                matching = [
-                    item for item in items
-                    if item.get("sku") == txn.sku
-                    or item.get("SellerSku") == txn.sku
-                    or item.get("seller_sku") == txn.sku
-                ]
-                if matching:
-                    # If items have an explicit quantity field, sum it; else count rows
-                    if matching[0].get("quantity") not in (None, "", 0):
-                        qty = sum(int(item.get("quantity", 1) or 1) for item in matching)
-                    else:
-                        qty = len(matching)
-                else:
-                    qty = len(items)
-            else:
-                qty = len(items)
-
-            print(f"[Enrich Lazada] order={txn.order_id} resolved_qty={qty}")
-
-            # Always write if API gave us a valid qty (fixes already-wrong stored values too)
-            if qty >= 1 and qty != (txn.qty or 1):
-                txn.qty = qty
-                enriched += 1
-
-        except Exception as e:
-            print(f"[Enrich Lazada] Error for order {txn.order_id}: {e}")
-            skipped += 1
-            continue
-
-    print(f"[Enrich Lazada] Done: enriched={enriched} skipped={skipped} total={len(txn_rows)}")
-    return enriched
+    raise marketplace_unavailable("Lazada quantity enrichment", "lazada")
 
 
 def _enrich_shopee(db, txn_rows):

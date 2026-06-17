@@ -1,16 +1,13 @@
-"""
-Financial report parsers — one per platform.
-
-Usage:
-    from app.financials.parsers import parse_tiktok, parse_lazada, parse_shopee
-
-Each returns List[dict] where every dict maps to FinancialTransaction fields.
-"""
+# Financial report parsers, one per platform.
+# Usage:
+#     from app.financials.parsers import parse_tiktok, parse_lazada, parse_shopee
+# Each returns List[dict] where every dict maps to FinancialTransaction fields.
 import re
 from datetime import date, datetime
 from typing import List, Dict, Any
 
 import openpyxl
+from app.marketplace import marketplace_unavailable
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -51,42 +48,16 @@ def _month_str(d: date | None) -> str:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _tiktok_scraper_singleton():
-    """Return a cached TikTokScraper instance (loads session from disk)."""
-    if not hasattr(_tiktok_scraper_singleton, "_instance"):
-        try:
-            from app.scrapers.tiktok import TikTokScraper
-            _tiktok_scraper_singleton._instance = TikTokScraper()
-        except Exception:
-            _tiktok_scraper_singleton._instance = None
-    return _tiktok_scraper_singleton._instance
+    return None
 
 
 def _shopee_client_singleton(shop_key: str = "my"):
-    """Return a cached ShopeeAPIClient for a configured Shopee shop key (my/sg)."""
-    if not hasattr(_shopee_client_singleton, "_instances"):
-        _shopee_client_singleton._instances = {}
-    instances = _shopee_client_singleton._instances
-    if shop_key in instances:
-        return instances[shop_key]
-
-    try:
-        from app.scrapers.shopee_api import ShopeeAPIClient, SHOPS
-        shop_id = (SHOPS.get(shop_key) or {}).get("shop_id")
-        if not shop_id:
-            instances[shop_key] = None
-        else:
-            instances[shop_key] = ShopeeAPIClient(shop_id)
-    except Exception as e:
-        print(f"[Financials] Could not create ShopeeAPIClient ({shop_key}): {e}")
-        instances[shop_key] = None
-    return instances[shop_key]
+    return None
 
 
 def _normalize_order_id(value: Any) -> str:
-    """
-    Normalize order IDs read from Excel/API text.
-    Converts numeric-like values such as 241234567890123.0 -> 241234567890123.
-    """
+    # Normalize order IDs read from Excel/API text.
+    # Converts numeric-like values such as 241234567890123.0 -> 241234567890123.
     s = str(value or "").strip()
     if not s:
         return ""
@@ -100,39 +71,6 @@ def _normalize_order_id(value: Any) -> str:
 
 
 def _shopee_fetch_order_qtys(order_ids: List[str]) -> Dict[str, int]:
-    """
-    Batch-fetch order quantities from Shopee API.
-    Returns dict of {order_id: total_qty}.
-    """
-    order_ids = [_normalize_order_id(oid) for oid in order_ids]
-    order_ids = [oid for oid in order_ids if oid]
-    if not order_ids:
-        return {}
-
-    my_client = _shopee_client_singleton("my")
-    sg_client = _shopee_client_singleton("sg")
-    if not my_client and not sg_client:
-        return {}
-
-    qtys: Dict[str, int] = {}
-
-    def _fetch_with_client(client, unresolved_ids: List[str]):
-        if not client or not unresolved_ids:
-            return
-        # API allows max 50 per call
-        for i in range(0, len(unresolved_ids), 50):
-            batch = unresolved_ids[i:i + 50]
-            try:
-                resp = client.get_order_detail(batch)
-                for order in resp.get("response", {}).get("order_list", []):
-                    oid = _normalize_order_id(order.get("order_sn", ""))
-                    items = order.get("item_list", [])
-                    total_qty = sum(int(item.get("model_quantity_purchased", 1)) for item in items)
-                    if oid:
-                        qtys[oid] = max(total_qty, 1)
-            except Exception as e:
-                print(f"[Financials] Shopee order detail API error: {e}")
-
     # First try MY shop, then SG for unresolved order IDs.
     _fetch_with_client(my_client, order_ids)
     unresolved = [oid for oid in order_ids if oid not in qtys]
@@ -143,18 +81,16 @@ def _shopee_fetch_order_qtys(order_ids: List[str]) -> Dict[str, int]:
 
 
 def parse_tiktok(filepath: str, upload_batch: str = "") -> List[Dict[str, Any]]:
-    """
-    Sheet: 'Order details'
-    Header row: 0  |  Data starts: row 1
-    Key columns:
-        Order/adjustment ID, Type, Order created time, Order settled time,
-        Total settlement amount, Total Revenue, Total Fees,
-        Transaction fee, TikTok Shop commission fee,
-        Seller shipping fee, Actual shipping fee,
-        Platform shipping fee discount, Affiliate Commission,
-        Platform support fee, Seller co-funded voucher discount,
-        Customer payment
-    """
+    # Sheet: 'Order details'
+    # Header row: 0  |  Data starts: row 1
+    # Key columns:
+    #     Order/adjustment ID, Type, Order created time, Order settled time,
+    #     Total settlement amount, Total Revenue, Total Fees,
+    #     Transaction fee, TikTok Shop commission fee,
+    #     Seller shipping fee, Actual shipping fee,
+    #     Platform shipping fee discount, Affiliate Commission,
+    #     Platform support fee, Seller co-funded voucher discount,
+    #     Customer payment
     wb = openpyxl.load_workbook(filepath, data_only=True)
     ws = wb["Order details"]
 
@@ -263,18 +199,16 @@ def parse_tiktok(filepath: str, upload_batch: str = "") -> List[Dict[str, Any]]:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def parse_lazada(filepath: str, upload_batch: str = "") -> List[Dict[str, Any]]:
-    """
-    Sheet: 'Income Overview'
-    Header row: 0  |  Data starts: row 1
-    One ROW per fee line — must group by Order Number.
-
-    Fee Name examples:
-        'Item Price Credit'          → revenue (positive)
-        'Payment Fee'                → commission/txn (negative)
-        'LazCoins Discount Promotion Fee' → platform voucher (negative, but platform-funded)
-        'Shipping Fee'               → shipping deduction (negative)
-        'Shipping Subsidy Credit'    → shipping rebate (positive)
-    """
+    # Sheet: 'Income Overview'
+    # Header row: 0  |  Data starts: row 1
+    # One ROW per fee line - must group by Order Number.
+    #
+    # Fee Name examples:
+    #     'Item Price Credit'          -> revenue (positive)
+    #     'Payment Fee'                -> commission/txn (negative)
+    #     'LazCoins Discount Promotion Fee' -> platform voucher (negative, but platform-funded)
+    #     'Shipping Fee'               -> shipping deduction (negative)
+    #     'Shipping Subsidy Credit'    -> shipping rebate (positive)
     wb = openpyxl.load_workbook(filepath, data_only=True)
     ws = wb["Income Overview"]
 
@@ -378,15 +312,12 @@ def parse_lazada(filepath: str, upload_batch: str = "") -> List[Dict[str, Any]]:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def parse_shopee(filepath: str, upload_batch: str = "") -> List[Dict[str, Any]]:
-    """
-    Sheet: 'Income'
-    Row 1 (idx 0): section labels  (Order Info | Released Amount Details | ...)
-    Row 2 (idx 1): sub-labels      (Order Income | Merchandise Subtotal | ...)
-    Row 3 (idx 2): ACTUAL headers  (Sequence No. | Order ID | Product Name | ...)
-    Data starts: row 4 (idx 3)
-
-    Only process rows where 'View By' == 'Order' (skip 'Sku' detail rows).
-    """
+    # Sheet: 'Income'
+    # Row 1 (idx 0): section labels  (Order Info | Released Amount Details | ...)
+    # Row 2 (idx 1): sub-labels      (Order Income | Merchandise Subtotal | ...)
+    # Row 3 (idx 2): ACTUAL headers  (Sequence No. | Order ID | Product Name | ...)
+    # Data starts: row 4 (idx 3)
+    # Only process rows where 'View By' == 'Order' (skip 'Sku' detail rows).
     wb = openpyxl.load_workbook(filepath, data_only=True)
     ws = wb["Income"]
 
@@ -492,7 +423,6 @@ def parse_shopee(filepath: str, upload_batch: str = "") -> List[Dict[str, Any]]:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def detect_and_parse(filepath: str, upload_batch: str = "") -> List[Dict[str, Any]]:
-    """Auto-detect platform from filename or sheet names and parse accordingly."""
     lower = filepath.lower()
     if "tiktok" in lower or "tiktokshop" in lower:
         return parse_tiktok(filepath, upload_batch)

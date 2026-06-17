@@ -1413,7 +1413,7 @@ async function sendDocumentEmail(triggerBtn) {
       applyViewModeA4Scale();
       window.addEventListener('resize', applyViewModeA4Scale);
       
-      // Signal to external agents (e.g., Playwright) that rendering is complete
+      // Signal that rendering is complete
       window.__docRenderingComplete = true;
       
     } catch (error) {

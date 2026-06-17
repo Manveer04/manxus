@@ -23,6 +23,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.database import SessionLocal
+from app.marketplace import marketplace_unavailable
 from app.financials.models import (
     OffPlatformBuyerContact,
     GeneratedInvoice,
@@ -413,12 +414,12 @@ def download_invoice_pdf(
 
     try:
         try:
-            playwright_sync = importlib.import_module("playwright.sync_api")
-            sync_playwright = playwright_sync.sync_playwright
+            renderer_sync_module = importlib.import_module("renderer.sync_api")
+            sync_renderer = renderer_sync_module.renderer
         except Exception:
-            raise HTTPException(500, "Playwright is not available on server")
+            raise HTTPException(500, "Document PDF rendering is not bundled in this build")
 
-        with sync_playwright() as p:
+        with sync_renderer() as p:
             browser = p.chromium.launch(headless=True, args=["--no-sandbox"])
             page = browser.new_page(viewport={"width": 1400, "height": 2200})
             page.goto(target_url, wait_until="networkidle", timeout=60000)
@@ -521,12 +522,12 @@ def email_invoice_pdf(
         target_url = f"{base_url}/documents?view={view_type}&id={invoice_id}"
 
         try:
-            playwright_sync = importlib.import_module("playwright.sync_api")
-            sync_playwright = playwright_sync.sync_playwright
+            renderer_sync_module = importlib.import_module("renderer.sync_api")
+            sync_renderer = renderer_sync_module.renderer
         except Exception:
-            raise HTTPException(500, "Playwright is not available on server")
+            raise HTTPException(500, "Document PDF rendering is not bundled in this build")
 
-        with sync_playwright() as p:
+        with sync_renderer() as p:
             browser = p.chromium.launch(headless=True, args=["--no-sandbox"])
             page = browser.new_page(viewport={"width": 1400, "height": 2200})
             page.goto(target_url, wait_until="networkidle", timeout=60000)

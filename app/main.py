@@ -453,11 +453,6 @@ async def serve_auth_login(request: Request):
     if _is_authorized(request):
         next_path = _sanitize_next_path((request.query_params.get("next") or "/").strip())
         return RedirectResponse(url=next_path, status_code=303)
-    return FileResponse(str(STATIC_DIR / "auth_login.html"))
-
-
-@app.post("/auth/login")
-async def handle_auth_login(request: Request):
     user, password = _get_configured_auth_credentials()
     if not user or not password:
         return JSONResponse(status_code=503, content={"detail": "Authentication credentials are not configured"})
@@ -704,10 +699,6 @@ async def serve_purchases():
 @app.get("/documents")
 async def serve_documents():
     return FileResponse(str(STATIC_DIR / "documents.html"))
-
-@app.get("/shopee-tracker")
-async def serve_shopee_tracker():
-    return FileResponse(str(STATIC_DIR / "shopee_tracker.html"))
 
 @app.get("/orders-admin")
 async def serve_orders_admin():

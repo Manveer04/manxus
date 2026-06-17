@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 
 from app.models import Order, OrderItem, PlatformListing, Product
 from app.notifier import notify_new_order
+from app.marketplace import marketplace_unavailable
 
 
 class OrderEngine:
@@ -152,9 +153,7 @@ class OrderEngine:
 
     async def fetch_lazada_orders(self, db: Session):
         """Fetch recent Lazada orders and store new ones."""
-        from app.scrapers.lazada import LazadaScraper
-        scraper = LazadaScraper()
-        await scraper.start()
+        raise marketplace_unavailable("Lazada order fetch", "lazada")
 
         # Fetch orders from last 2 hours to catch anything since last poll
         since = (datetime.now() - timedelta(hours=24)).strftime("%Y-%m-%dT%H:%M:%S+08:00")
@@ -293,10 +292,7 @@ class OrderEngine:
 
     async def fetch_tiktok_orders(self, db: Session):
         """Fetch recent TikTok orders and store new ones."""
-        from app.scrapers.tiktok import TikTokScraper
-        scraper = TikTokScraper()
-        await scraper.start()
-        shop_cipher = await scraper._get_shop_cipher()
+        raise marketplace_unavailable("TikTok order fetch", "tiktok")
 
         path = "/order/202309/orders/search"
         # page_size is a query param; create_time filters go in the body
@@ -466,15 +462,7 @@ class OrderEngine:
             return await self._fetch_shopee_orders_browser(db)
 
     async def _fetch_shopee_orders_api(self, db: Session):
-        from app.scrapers.shopee_api import ShopeeAPIClient, SHOPS
-
-        shop_id = SHOPS.get("my", {}).get("shop_id", 0)
-        if not shop_id:
-            raise Exception("Shopee MY shop_id is not configured")
-
-        client = ShopeeAPIClient(shop_id)
-        now_ts = int(time.time())
-        from_ts = now_ts - (3 * 24 * 60 * 60)
+        raise marketplace_unavailable("Shopee order fetch", "shopee")
 
         # Keep this list aligned to Shopee Open API accepted enum values.
         # Deprecated/invalid values produce noisy recurring errors and hide coverage gaps.
@@ -641,110 +629,5 @@ class OrderEngine:
         return new_count
 
     async def _fetch_shopee_orders_browser(self, db: Session):
-        """Legacy fallback: browser automation + network interception."""
-        from app.scrapers.shopee import ShopeeScraper
-        scraper = ShopeeScraper()
-        await scraper.start(headless=True)
-
-        if not await scraper.is_logged_in():
-            print("[OrderEngine] Shopee not logged in")
-            await scraper.close()
-            return 0
-
-        captured_orders = []
-
-        async def handle_response(response):
-            if "get_order_list_card_list" in response.url and response.status == 200:
-                try:
-                    body = await response.json()
-                    card_list = body.get("data", {}).get("card_list", [])
-                    captured_orders.extend(card_list)
-                except Exception:
-                    pass
-
-        scraper.page.on("response", handle_response)
-
-        try:
-            await scraper.page.goto(
-                "https://seller.shopee.com.my/portal/sale/order?type=toship&source=all",
-                wait_until="networkidle",
-                timeout=30000,
-            )
-            await scraper.page.wait_for_timeout(5000)
-        except Exception as e:
-            print(f"[OrderEngine] Shopee page load error: {e}")
-            await scraper.close()
-            return 0
-
-        await scraper.close()
-
-        new_count = 0
-        for card in captured_orders:
-            pkg = card.get("package_card", {})
-            header = pkg.get("card_header", {})
-            order_sn = header.get("order_sn", "")
-            if not order_sn:
-                continue
-
-            existing = db.query(Order).filter_by(platform="shopee", platform_order_id=order_sn).first()
-            if existing:
-                continue
-
-            buyer = header.get("buyer_info", {}).get("username", "Unknown")
-
-            # Extract items
-            items_raw = []
-            for group in pkg.get("item_info_group", {}).get("item_info_list", []):
-                for item in group.get("item_list", []):
-                    unit_price = self._money_from_shopee(
-                        item.get("discounted_price")
-                        or item.get("final_price")
-                        or item.get("price")
-                    )
-                    items_raw.append({
-                        "name": item.get("name", ""),
-                        "quantity": int(item.get("model_quantity_purchased", 1) or 1),
-                        "price": unit_price,
-                        "sku": item.get("model_sku", ""),
-                    })
-
-            total = self._extract_shopee_total(pkg, items_raw)
-
-            order = Order(
-                platform="shopee",
-                platform_order_id=order_sn,
-                status="to_ship",
-                buyer_name=buyer,
-                total_price=total,
-                shipping_fee=0.0,
-                payment_method="",
-                items_count=len(items_raw),
-                notified=False,
-                platform_created_at=None,
-            )
-            db.add(order)
-            db.flush()
-
-            for item in items_raw:
-                db.add(OrderItem(
-                    order_id=order.id,
-                    platform_sku=item.get("sku", ""),
-                    product_name=item.get("name", ""),
-                    quantity=item.get("quantity", 1),
-                    unit_price=item.get("price", 0.0),
-                ))
-
-            db.commit()
-            new_count += 1
-
-            await self._notify_and_mark(
-                db,
-                order,
-                [{
-                    "name": self._resolve_display_name(db, "shopee", item.get("sku", ""), item.get("name", "")),
-                    "quantity": item.get("quantity", 1),
-                } for item in items_raw],
-            )
-
-        print(f"[OrderEngine] Shopee(browser): {new_count} new orders")
-        return new_count
+        """Unsupported Shopee order fetch path."""
+        raise marketplace_unavailable("Shopee browser order fetch", "shopee")

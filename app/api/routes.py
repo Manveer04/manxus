@@ -1,4 +1,4 @@
-from datetime import datetime
+﻿from datetime import datetime
 import logging
 import os
 import time
@@ -17,26 +17,27 @@ from pathlib import Path
 import base64
 
 from app.database import get_db
-from app.models import Product, ProductGroup, PlatformListing, SyncLog, Order, OrderItem
-from app.notifier import notify_new_order
-from app.order_engine import OrderEngine
-from app.scrapers import SCRAPERS
-from app.scrapers.base import SESSIONS_DIR
-from app.scrapers.lazada import lazada_arrange_shipment, lazada_create_awb, lazada_get_awb_result
-from app.scrapers.shopee_api import (
+from app.marketplace import (
+    SUPPORTED_MARKETPLACES,
+    TikTokAwbStateConflictError,
+    is_marketplace_configured,
+    lazada_arrange_shipment,
+    lazada_create_awb,
+    lazada_get_awb_result,
+    marketplace_unavailable,
     shopee_arrange_shipment,
     shopee_create_awb,
-    shopee_get_awb_result,
     shopee_get_awb_parameter,
+    shopee_get_awb_result,
     shopee_get_shipping_parameter,
     shopee_get_tracking_number,
-)
-from app.scrapers.tiktok import (
-    TikTokAwbStateConflictError,
     tiktok_arrange_shipment,
     tiktok_create_awb,
     tiktok_get_awb_result,
 )
+from app.models import Product, ProductGroup, PlatformListing, SyncLog, Order, OrderItem
+from app.notifier import notify_new_order
+from app.order_engine import OrderEngine
 from app.sync_engine import SyncEngine
 from app.sync_log_utils import get_latest_sync_log, get_recent_sync_logs
 
@@ -55,16 +56,21 @@ if not IMAGES_DIR.exists():
     except:
         pass
 
+def _notification_base_url() -> str:
+    raw = os.getenv("ORDER_ACTION_BASE_URL", os.getenv("PUBLIC_BASE_URL", "http://192.168.50.129:8080")).rstrip("/")
+    return raw
+
+
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-TRACKER_DB_PATH = Path(os.getenv("SHOPEE_TRACKER_DB", "invsync.db"))
+TRACKER_DB_PATH = Path(os.getenv("TRACKER_DB", "invsync.db"))
 if not TRACKER_DB_PATH.is_absolute():
     TRACKER_DB_PATH = PROJECT_ROOT / TRACKER_DB_PATH
-TRACKER_URLS_PATH = Path(os.getenv("SHOPEE_TRACKER_URLS_FILE", "urls.txt"))
+TRACKER_URLS_PATH = Path(os.getenv("TRACKER_URLS_FILE", "urls.txt"))
 if not TRACKER_URLS_PATH.is_absolute():
     TRACKER_URLS_PATH = PROJECT_ROOT / TRACKER_URLS_PATH
 TRACKER_SCRIPT_PATHS = [
-    PROJECT_ROOT / "shopee_tracker.py",
-    Path("/app/shopee_tracker.py"),
+    PROJECT_ROOT / "tracker.py",
+    Path("/app/tracker.py"),
 ]
 TRACKER_LOG_PATH = PROJECT_ROOT / "tracker_sync.log"
 
@@ -116,8 +122,38 @@ def _safe_int(value):
         return None
 
 
+def _get_order_or_404(order_id, db: Session, platform: str) -> Order:
+    order = None
+    try:
+        order = db.get(Order, int(order_id))
+    except (TypeError, ValueError):
+        order = None
+    if order is None:
+        order = (
+            db.query(Order)
+            .filter(Order.platform == platform)
+            .filter(Order.platform_order_id == str(order_id))
+            .first()
+        )
+    if order is None:
+        raise HTTPException(404, f"{platform.title()} order not found")
+    return order
+
+
+def _get_shopee_order_or_404(order_id, db: Session) -> Order:
+    return _get_order_or_404(order_id, db, "shopee")
+
+
+def _get_lazada_order_or_404(order_id, db: Session) -> Order:
+    return _get_order_or_404(order_id, db, "lazada")
+
+
+def _get_tiktok_order_or_404(order_id, db: Session) -> Order:
+    return _get_order_or_404(order_id, db, "tiktok")
+
+
 def _tracker_cookies_file() -> Path:
-    path = Path(os.getenv("SHOPEE_TRACKER_COOKIES_FILE", "shopee_cookies.json"))
+    path = Path(os.getenv("TRACKER_COOKIES_FILE", "tracker_cookies.json"))
     if not path.is_absolute():
         path = PROJECT_ROOT / path
     return path
@@ -156,6 +192,24 @@ def _tracker_recent_rows(limit: int = 5) -> list[dict[str, object]]:
             for r in rows
         ]
 
+
+def _read_tracker_urls_file() -> List[str]:
+    if not TRACKER_URLS_PATH.exists():
+        return []
+    out = []
+    for line in TRACKER_URLS_PATH.read_text(encoding="utf-8").splitlines():
+        v = line.strip()
+        if not v or v.startswith("#"):
+            continue
+        if v.startswith("http://") or v.startswith("https://"):
+            out.append(v)
+    return out
+
+
+class TrackerUrlListRequest(BaseModel):
+    urls: List[str] = Field(default_factory=list)
+
+
 # ── Schemas ───────────────────────────────────────────────────────────────────
 class ListingOut(BaseModel):
     id: int
@@ -169,6 +223,7 @@ class ListingOut(BaseModel):
     error_message: Optional[str]
     class Config: from_attributes = True
 
+
 class ProductOut(BaseModel):
     id: int
     master_sku: str
@@ -181,12 +236,14 @@ class ProductOut(BaseModel):
     updated_at: Optional[datetime]
     class Config: from_attributes = True
 
+
 class GroupMemberOut(BaseModel):
     id: int
     master_sku: str
     name: str
     listings: List[ListingOut]
     class Config: from_attributes = True
+
 
 class GroupOut(BaseModel):
     id: int
@@ -198,9 +255,11 @@ class GroupOut(BaseModel):
     updated_at: Optional[datetime]
     class Config: from_attributes = True
 
+
 class UpdateStockRequest(BaseModel):
     new_stock: int = Field(ge=0, le=1_000_000)
     platforms: Optional[List[Literal["shopee", "shopee_sg", "lazada", "tiktok"]]] = None
+
 
 class UpdateProductRequest(BaseModel):
     name: Optional[str] = None
@@ -208,10 +267,12 @@ class UpdateProductRequest(BaseModel):
     auto_sync: Optional[bool] = None
     backorder_display_qty: Optional[int] = Field(default=None, ge=0, le=1_000_000)
 
+
 class CreateGroupRequest(BaseModel):
     display_name: str = Field(min_length=1, max_length=120)
     product_ids: List[int]
     master_stock: int = Field(default=0, ge=0, le=1_000_000)
+
 
 class UpdateGroupRequest(BaseModel):
     display_name: Optional[str] = Field(default=None, min_length=1, max_length=120)
@@ -219,8 +280,10 @@ class UpdateGroupRequest(BaseModel):
     backorder_display_qty: Optional[int] = Field(default=None, ge=0, le=1_000_000)
     product_ids: Optional[List[int]] = None
 
+
 class ImageUploadRequest(BaseModel):
     image_data: str = Field(min_length=32, max_length=8_000_000)
+
 
 class ShopeeShipmentRequest(BaseModel):
     package_number: Optional[str] = None
@@ -228,15 +291,18 @@ class ShopeeShipmentRequest(BaseModel):
     dropoff: Optional[dict] = None
     non_integrated: Optional[dict] = None
 
+
 class ShopeeAwbRequest(BaseModel):
     package_number: Optional[str] = None
     shipping_document_type: Optional[str] = None
     wait_seconds: Optional[int] = Field(default=20, ge=0, le=180)
     poll_seconds: Optional[int] = Field(default=2, ge=1, le=30)
 
+
 class LazadaAwbRequest(BaseModel):
     wait_seconds: Optional[int] = Field(default=20, ge=0, le=180)
     poll_seconds: Optional[int] = Field(default=2, ge=1, le=30)
+
 
 class LazadaShipmentRequest(BaseModel):
     delivery_type: str = Field(min_length=1, max_length=64)
@@ -244,13 +310,16 @@ class LazadaShipmentRequest(BaseModel):
     tracking_number: str = Field(min_length=1, max_length=128)
     order_item_ids: Optional[List[str]] = None
 
+
 class TikTokShipmentRequest(BaseModel):
     package_id: Optional[str] = None
+
 
 class TikTokAwbRequest(BaseModel):
     package_id: Optional[str] = None
     wait_seconds: Optional[int] = Field(default=20, ge=0, le=180)
     poll_seconds: Optional[int] = Field(default=2, ge=1, le=30)
+
 
 class SyncLogOut(BaseModel):
     id: int
@@ -267,27 +336,9 @@ class TrackerUrlListRequest(BaseModel):
     urls: List[str] = Field(default_factory=list)
 
 
-def _notification_base_url() -> str:
-    raw = os.getenv("ORDER_ACTION_BASE_URL", os.getenv("PUBLIC_BASE_URL", "http://192.168.50.129:8080")).rstrip("/")
-    return raw
-
-
-def _read_tracker_urls_file() -> List[str]:
-    if not TRACKER_URLS_PATH.exists():
-        return []
-    out = []
-    for line in TRACKER_URLS_PATH.read_text(encoding="utf-8").splitlines():
-        v = line.strip()
-        if not v or v.startswith("#"):
-            continue
-        if v.startswith("http://") or v.startswith("https://"):
-            out.append(v)
-    return out
-
-
 def _require_known_platform(platform: str) -> str:
     p = (platform or "").strip().lower()
-    if p not in SCRAPERS:
+    if p not in SUPPORTED_MARKETPLACES:
         raise HTTPException(400, f"Unknown platform: {platform}")
     return p
 
@@ -313,7 +364,7 @@ async def _send_test_notification(platform: str) -> dict:
         "action_url": action_url,
     }
 
-# ── Products ──────────────────────────────────────────────────────────────────
+# â”€â”€ Products â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 @router.get("/products", response_model=List[ProductOut])
 def list_products(db: Session = Depends(get_db)):
     return db.query(Product).all()
@@ -513,7 +564,7 @@ async def push_group_stock(group_id: int, body: UpdateStockRequest, db: Session 
         results[product.id] = r
     return {"status": "done", "results": results}
 
-# ── Sync ──────────────────────────────────────────────────────────────────────
+# â”€â”€ Sync â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 @router.post("/products/{product_id}/push")
 async def push_stock(product_id: int, body: UpdateStockRequest, db: Session = Depends(get_db)):
     target_platforms = body.platforms
@@ -535,7 +586,7 @@ async def pull_all(db: Session = Depends(get_db)):
 @router.post("/sync/pull/{platform}")
 async def pull_single(platform: str, db: Session = Depends(get_db)):
     platform = _require_known_platform(platform)
-    ScraperClass = SCRAPERS.get(platform)
+    ScraperClass = None
     result = await engine.pull_platform(platform, ScraperClass, db)
     await engine._propagate_sales(db)
     return {"status": "done", "results": result}
@@ -545,7 +596,7 @@ async def push_out_of_sync(db: Session = Depends(get_db)):
     return await engine.push_all_out_of_sync(db)
 
 
-# ── Shopee Tracker ────────────────────────────────────────────────────────────
+# â”€â”€ Shopee Tracker â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 @router.get("/tracker/products")
 def tracker_products():
     with _tracker_connect() as conn:
@@ -754,40 +805,21 @@ def tracker_sync():
         "recent": _tracker_recent_rows(5),
     }
  
-# ── Platform status ───────────────────────────────────────────────────────────
+# â”€â”€ Platform status â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 @router.get("/platforms/status")
 async def platform_status(db: Session = Depends(get_db)):
     statuses = {}
-    for platform in SCRAPERS.keys():
-        if platform == "lazada":
-            # Lazada can have both API token and browser session state files.
-            token_file = SESSIONS_DIR / "lazada.json"
-            browser_file = SESSIONS_DIR / "lazada_browser.json"
-            has_session = token_file.exists() or browser_file.exists()
-        else:
-            session_file = SESSIONS_DIR / f"{platform}.json"
-            has_session = session_file.exists()
-        statuses[platform] = {"has_session": has_session, "last_sync": None}
+    for platform in SUPPORTED_MARKETPLACES:
+        statuses[platform] = {
+            "configured": is_marketplace_configured(platform),
+            "last_sync": None,
+        }
         last_log = get_latest_sync_log(db, platform=platform, action="read")
         if last_log:
             statuses[platform]["last_sync"] = last_log.created_at
     return statuses
 
-@router.delete("/platforms/{platform}/session")
-def clear_session(platform: str):
-    platform = _require_known_platform(platform)
-    if platform == "lazada":
-        for name in ("lazada.json", "lazada_browser.json"):
-            p = SESSIONS_DIR / name
-            if p.exists():
-                p.unlink()
-    else:
-        session_file = SESSIONS_DIR / f"{platform}.json"
-        if session_file.exists():
-            session_file.unlink()
-    return {"status": "session cleared", "platform": platform}
-
-# ── Logs & Stats ──────────────────────────────────────────────────────────────
+# â”€â”€ Logs & Stats â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 @router.get("/logs", response_model=List[SyncLogOut])
 def get_logs(limit: int = Query(default=50, ge=1, le=500), db: Session = Depends(get_db)):
     return get_recent_sync_logs(db, limit=limit)
@@ -803,302 +835,19 @@ def get_stats(db: Session = Depends(get_db)):
         "backorder":       db.query(Product).filter(Product.master_stock <= 0, Product.backorder_display_qty > 0).count(),
     }
 
-# ── Orders ────────────────────────────────────────────────────────────────────
-@router.post("/orders/fetch")
-async def fetch_orders(db: Session = Depends(get_db)):
-    """Manually trigger an order fetch from all platforms. Use this to test."""
-    results = await order_engine.fetch_all_orders(db)
-    return {"status": "done", "new_orders": results}
-
-@router.post("/orders/fetch/{platform}")
-async def fetch_orders_platform(platform: str, db: Session = Depends(get_db)):
-    """Trigger an order fetch for a single platform (lazada / tiktok / shopee)."""
-    try:
-        if platform == "tiktok":
-            count = await order_engine.fetch_tiktok_orders(db)
-        elif platform == "lazada":
-            count = await order_engine.fetch_lazada_orders(db)
-        elif platform == "shopee":
-            count = await order_engine.fetch_shopee_orders(db)
-        else:
-            raise HTTPException(400, "Unknown platform")
-    except ModuleNotFoundError:
-        raise _scrapers_disabled_error(f"Order fetch for {platform}")
-    retried = await order_engine.retry_missed_notifications(db)
-    return {"platform": platform, "new_orders": count, "retried_notifications": retried}
-
-@router.get("/orders/debug/tiktok")
-async def debug_tiktok_orders():
-    """Return the raw TikTok order search API response for diagnosis."""
-    if os.getenv("ENABLE_DEBUG_ENDPOINTS", "false").lower() != "true":
-        raise HTTPException(404, "Not found")
-    import json, time
-    import httpx
-    try:
-        from app.scrapers.tiktok import TikTokScraper
-    except Exception:
-        raise _scrapers_disabled_error("TikTok debug orders")
-    scraper = TikTokScraper()
-    await scraper.start()
-    shop_cipher = await scraper._get_shop_cipher()
-    path = "/order/202309/orders/search"
-    body = {
-        "create_time_ge": int(time.time()) - 86400,
-        "create_time_lt": int(time.time()),
-    }
-    body_str = json.dumps(body, separators=(",", ":"))
-    params = scraper._base_params(path, {"shop_cipher": shop_cipher, "page_size": 50}, body_str)
-    async with httpx.AsyncClient() as client:
-        r = await client.post(
-            scraper.BASE_URL + path,
-            params=params,
-            headers=scraper._headers(),
-            content=body_str,
-            timeout=30,
-        )
-    return {"http_status": r.status_code, "body": r.json() if r.text else None}
-
-@router.get("/orders")
-def list_orders(
-    platform: Optional[Literal["shopee", "shopee_sg", "lazada", "tiktok"]] = None,
-    limit: int = Query(default=50, ge=1, le=500),
-    db: Session = Depends(get_db),
-):
-    """List stored orders, optionally filtered by platform."""
-    q = db.query(Order).order_by(func.coalesce(Order.platform_created_at, Order.created_at).desc())
-    if platform:
-        q = q.filter(Order.platform == platform)
-    orders = q.limit(limit).all()
-    return [
-        {
-            "id": o.id,
-            "platform": o.platform,
-            "platform_order_id": o.platform_order_id,
-            "status": o.status,
-            "buyer_name": o.buyer_name,
-            "total_price": o.total_price,
-            "items_count": o.items_count,
-            "notified": o.notified,
-            "platform_created_at": o.platform_created_at,
-            "items": [
-                {"sku": i.platform_sku, "name": i.product_name, "qty": i.quantity, "unit_price": i.unit_price}
-                for i in o.items
-            ],
-        }
-        for o in orders
-    ]
-
-
-@router.post("/notifications/test/{platform}")
-async def test_notification_platform(platform: str):
-    """Send a test ntfy notification without requiring a real order."""
-    platform = (platform or "").strip().lower()
-    if platform not in ("shopee", "lazada", "tiktok"):
-        raise HTTPException(400, "platform must be one of: shopee, lazada, tiktok")
-    out = await _send_test_notification(platform)
-    if not out["ok"]:
-        raise HTTPException(502, f"Test notification failed for {platform}")
-    return {"status": "ok", **out}
-
-
-@router.post("/notifications/test-all")
-async def test_notification_all():
-    """Send test ntfy notifications for Shopee, Lazada and TikTok."""
-    results = []
-    for platform in ("shopee", "lazada", "tiktok"):
-        try:
-            results.append(await _send_test_notification(platform))
-        except Exception as e:
-            results.append({"platform": platform, "ok": False, "error": str(e)})
-    return {
-        "status": "ok",
-        "results": results,
-    }
-
-@router.get("/orders/summary")
-def order_summary(db: Session = Depends(get_db)):
-    orders = db.query(Order).all()
-    total = len(orders)
-    notified = sum(1 for o in orders if o.notified)
-    pending = total - notified
-
-    by_platform = {}
-    for p in ("shopee", "lazada", "tiktok"):
-        rows = [o for o in orders if o.platform == p]
-        n_total = len(rows)
-        n_notified = sum(1 for o in rows if o.notified)
-        by_platform[p] = {
-            "total": n_total,
-            "notified": n_notified,
-            "pending": n_total - n_notified,
-        }
-
-    return {
-        "total": total,
-        "notified": notified,
-        "pending": pending,
-        "by_platform": by_platform,
-    }
-
-@router.post("/orders/retry-notifications")
-async def retry_order_notifications(limit: int = Query(default=200, ge=1, le=1000), db: Session = Depends(get_db)):
-    retried = await order_engine.retry_missed_notifications(db, limit=min(limit, 1000))
-    return {"status": "ok", "retried_notifications": retried}
-
-@router.post("/orders/{order_id}/notify")
-async def resend_order_notification(order_id: int, db: Session = Depends(get_db)):
-    ok = await order_engine.notify_order_by_id(db, order_id)
-    if not ok:
-        raise HTTPException(404, "Order not found or notification failed")
-    return {"status": "ok", "order_id": order_id}
-
-
-def _get_shopee_order_or_404(order_key: str, db: Session) -> Order:
-    """Resolve Shopee order by internal numeric id OR platform order_sn."""
-    order = None
-    key = str(order_key or "").strip()
-
-    if key.isdigit():
-        order = db.query(Order).filter_by(id=int(key)).first()
-
-    if not order:
-        order = db.query(Order).filter_by(platform_order_id=key).first()
-
-    if not order:
-        raise HTTPException(404, "Order not found")
-    if order.platform not in ("shopee", "shopee_sg"):
-        raise HTTPException(400, f"Order {order_key} is not a Shopee order")
-    return order
-
-
-def _get_lazada_order_or_404(order_id: int, db: Session) -> Order:
-    order = db.query(Order).filter_by(id=order_id).first()
-    if not order:
-        raise HTTPException(404, "Order not found")
-    if order.platform != "lazada":
-        raise HTTPException(400, f"Order {order_id} is not a Lazada order")
-    return order
-
-
-def _get_tiktok_order_or_404(order_id: int, db: Session) -> Order:
-    order = db.query(Order).filter_by(id=order_id).first()
-    if not order:
-        raise HTTPException(404, "Order not found")
-    if order.platform != "tiktok":
-        raise HTTPException(400, f"Order {order_id} is not a TikTok order")
-    return order
-
-
-@router.post("/orders/shopee/{order_id}/arrange-shipment")
-def shopee_arrange_shipment_order(order_id: str, body: ShopeeShipmentRequest, db: Session = Depends(get_db)):
-    """Arrange Shopee shipment for a stored order (ship_order)."""
-    order = _get_shopee_order_or_404(order_id, db)
-    try:
-        out = shopee_arrange_shipment(
-            platform=order.platform,
-            order_sn=order.platform_order_id,
-            package_number=(body.package_number or ""),
-            pickup=(body.pickup or None),
-            dropoff=(body.dropoff or None),
-            non_integrated=(body.non_integrated or None),
-        )
-        return {
-            "status": "ok",
-            "order_id": order.id,
-            "platform": order.platform,
-            "platform_order_id": order.platform_order_id,
-            "response": out,
-        }
-    except Exception as e:
-        raise HTTPException(400, "Shopee arrange shipment failed")
-
-
-@router.get("/orders/shopee/{order_id}/shipping-parameter")
-def shopee_get_shipping_parameter_order(order_id: str, db: Session = Depends(get_db)):
-    """Fetch Shopee shipping parameter as mandatory preflight before ship_order."""
-    order = _get_shopee_order_or_404(order_id, db)
-    try:
-        out = shopee_get_shipping_parameter(
-            platform=order.platform,
-            order_sn=order.platform_order_id,
-        )
-        return {
-            "status": "ok",
-            "order_id": order.id,
-            "platform": order.platform,
-            "platform_order_id": order.platform_order_id,
-            **out,
-        }
-    except Exception as e:
-        raise HTTPException(400, "Shopee shipping-parameter preflight failed")
-
-
-@router.post("/orders/shopee/{order_id}/awb/create")
-def shopee_create_awb_order(order_id: str, body: ShopeeAwbRequest, db: Session = Depends(get_db)):
-    """
-    Create Shopee shipping document (AWB/label) and return latest result.
-    AWB creation is allowed when shipping_carrier or tracking_number is present, regardless of order status.
-    This matches confirmed Shopee SPX behavior: AWB is printable after shipment is processed, not just at READY_TO_SHIP.
-    """
-    order = _get_shopee_order_or_404(order_id, db)
-    logger.info(
-        "[Shopee AWB][create][start] order_id=%s platform=%s order_sn=%s package_number=%s shipping_document_type=%s wait_seconds=%s poll_seconds=%s",
-        order.id,
-        order.platform,
-        order.platform_order_id,
-        (body.package_number or ""),
-        (body.shipping_document_type or ""),
-        max(0, int(body.wait_seconds or 0)),
-        max(1, int(body.poll_seconds or 1)),
-    )
-    try:
-        out = shopee_create_awb(
-            platform=order.platform,
-            order_sn=order.platform_order_id,
-            package_number=(body.package_number or ""),
-            shipping_document_type=(body.shipping_document_type or ""),
-            wait_seconds=max(0, int(body.wait_seconds or 0)),
-            poll_seconds=max(1, int(body.poll_seconds or 1)),
-        )
-        logger.info(
-            "[Shopee AWB][create][ok] order_id=%s order_sn=%s package_number=%s booking_no=%s print_url=%s warning=%s",
-            order.id,
-            order.platform_order_id,
-            out.get("package_number", ""),
-            out.get("booking_no", ""),
-            bool(out.get("print_url")),
-            out.get("warning", ""),
-        )
-        return {
-            "status": "ok",
-            "order_id": order.id,
-            "platform": order.platform,
-            "platform_order_id": order.platform_order_id,
-            **out,
-        }
-    except Exception as e:
-        logger.exception(
-            "[Shopee AWB][create][fail] order_id=%s platform=%s order_sn=%s package_number=%s",
-            order.id,
-            order.platform,
-            order.platform_order_id,
-            (body.package_number or ""),
-        )
-        raise HTTPException(400, f"Shopee AWB create failed: {e}")
-
 
 @router.get("/orders/shopee/{order_id}/awb")
 def shopee_get_awb_order(order_id: str, package_number: str = "", db: Session = Depends(get_db)):
-    """Fetch current Shopee AWB generation result (document URL/status) for a stored order."""
+    """Fetch Shopee shipping document data for a stored order."""
     order = _get_shopee_order_or_404(order_id, db)
-    logger.info(
-        "[Shopee AWB][get][start] order_id=%s platform=%s order_sn=%s package_number=%s",
-        order.id,
-        order.platform,
-        order.platform_order_id,
-        (package_number or ""),
-    )
     try:
+        logger.info(
+            "[Shopee AWB][get][start] order_id=%s platform=%s order_sn=%s package_number=%s",
+            order.id,
+            order.platform,
+            order.platform_order_id,
+            (package_number or ""),
+        )
         out = shopee_get_awb_result(
             platform=order.platform,
             order_sn=order.platform_order_id,
@@ -1368,7 +1117,7 @@ async def tiktok_get_awb_order(order_id: int, package_id: str = "", db: Session 
         )
         raise HTTPException(400, f"TikTok AWB result fetch failed: {e}")
 
-# ── Image (product level) ─────────────────────────────────────────────────────
+# â”€â”€ Image (product level) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 @router.post("/products/{product_id}/image")
 def upload_product_image(product_id: int, body: ImageUploadRequest, db: Session = Depends(get_db)):
     p = db.query(Product).filter_by(id=product_id).first()
