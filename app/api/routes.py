@@ -364,7 +364,7 @@ async def _send_test_notification(platform: str) -> dict:
         "action_url": action_url,
     }
 
-# â”€â”€ Products â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# â””€ Products â””””””””””””””””””””””””””””””””””””””””””””””””””””””””””””””””””€
 @router.get("/products", response_model=List[ProductOut])
 def list_products(db: Session = Depends(get_db)):
     return db.query(Product).all()
@@ -564,7 +564,7 @@ async def push_group_stock(group_id: int, body: UpdateStockRequest, db: Session 
         results[product.id] = r
     return {"status": "done", "results": results}
 
-# â”€â”€ Sync â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# â””€ Sync â””””””””””””””””””””””””””””””””””””””””””””””””””””””””””””””””””””””€
 @router.post("/products/{product_id}/push")
 async def push_stock(product_id: int, body: UpdateStockRequest, db: Session = Depends(get_db)):
     target_platforms = body.platforms
@@ -596,7 +596,7 @@ async def push_out_of_sync(db: Session = Depends(get_db)):
     return await engine.push_all_out_of_sync(db)
 
 
-# â”€â”€ Shopee Tracker â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# â””€ Shopee Tracker â””””””””””””””””””””””””””””””””””””””””””””””””””””””””””””€
 @router.get("/tracker/products")
 def tracker_products():
     with _tracker_connect() as conn:
@@ -805,7 +805,7 @@ def tracker_sync():
         "recent": _tracker_recent_rows(5),
     }
  
-# â”€â”€ Platform status â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# Platform status 
 @router.get("/platforms/status")
 async def platform_status(db: Session = Depends(get_db)):
     statuses = {}
@@ -819,7 +819,7 @@ async def platform_status(db: Session = Depends(get_db)):
             statuses[platform]["last_sync"] = last_log.created_at
     return statuses
 
-# â”€â”€ Logs & Stats â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# Logs & Stats
 @router.get("/logs", response_model=List[SyncLogOut])
 def get_logs(limit: int = Query(default=50, ge=1, le=500), db: Session = Depends(get_db)):
     return get_recent_sync_logs(db, limit=limit)
@@ -1117,7 +1117,7 @@ async def tiktok_get_awb_order(order_id: int, package_id: str = "", db: Session 
         )
         raise HTTPException(400, f"TikTok AWB result fetch failed: {e}")
 
-# â”€â”€ Image (product level) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# â””€ Image (product level) â”””””””””””””””””””””””””””””””””””””””””””””””””””””€
 @router.post("/products/{product_id}/image")
 def upload_product_image(product_id: int, body: ImageUploadRequest, db: Session = Depends(get_db)):
     p = db.query(Product).filter_by(id=product_id).first()
