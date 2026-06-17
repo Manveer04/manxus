@@ -1586,7 +1586,7 @@ def create_purchase(
                 merged_results: Dict[str, str] = {}
                 for member in group.members:
                     member_result = _run_async(
-                        engine.push_product(
+                        engine.push_inventory_for_product(
                             member.id,
                             new_stock,
                             None,
@@ -1606,9 +1606,9 @@ def create_purchase(
                     member.master_stock = new_stock
             else:
                 push_results = _run_async(
-                    engine.push_product(product.id, new_stock, None, db)
+                    engine.push_inventory_for_product(product.id, new_stock, None, db)
                 )
-                # push_product already updates master_stock on full success;
+                # push_inventory_for_product already updates master_stock on full success;
                 # do it explicitly here too so it's always consistent
                 product.master_stock = new_stock
 
@@ -1864,7 +1864,7 @@ def create_off_platform_sale(
             new_stock = max(0, int(product.master_stock or 0) - int(sold_qty))
             try:
                 result = _run_async(
-                    engine.push_product(pid, new_stock, None, db)
+                    engine.push_inventory_for_product(pid, new_stock, None, db)
                 )
                 push_results[str(pid)] = result
                 product.master_stock = new_stock
@@ -1881,7 +1881,7 @@ def create_off_platform_sale(
             try:
                 for member in group.members:
                     result = _run_async(
-                        engine.push_product(
+                        engine.push_inventory_for_product(
                             member.id,
                             new_stock,
                             None,

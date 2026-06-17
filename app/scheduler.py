@@ -24,7 +24,7 @@ async def _auto_pull():
     started_at = time.time()
     try:
         print("[Scheduler][auto_pull] START")
-        results = await _engine.pull_all(db)
+        results = await _engine.sync_all_inventory(db)
         total_pulled = sum((v or {}).get("pulled", 0) for v in (results or {}).values())
         total_errors = sum((v or {}).get("errors", 0) for v in (results or {}).values())
         print(

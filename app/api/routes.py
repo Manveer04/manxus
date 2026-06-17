@@ -21,19 +21,9 @@ from app.marketplace import (
     SUPPORTED_MARKETPLACES,
     TikTokAwbStateConflictError,
     is_marketplace_configured,
-    lazada_arrange_shipment,
-    lazada_create_awb,
-    lazada_get_awb_result,
     marketplace_unavailable,
-    shopee_arrange_shipment,
-    shopee_create_awb,
-    shopee_get_awb_parameter,
-    shopee_get_awb_result,
-    shopee_get_shipping_parameter,
-    shopee_get_tracking_number,
-    tiktok_arrange_shipment,
-    tiktok_create_awb,
-    tiktok_get_awb_result,
+    # Note: marketplace-specific helper functions removed; use
+    # `is_marketplace_configured` and `marketplace_unavailable` instead.
 )
 from app.models import Product, ProductGroup, PlatformListing, SyncLog, Order, OrderItem
 from app.notifier import notify_new_order
@@ -560,7 +550,7 @@ async def push_group_stock(group_id: int, body: UpdateStockRequest, db: Session 
                 continue  # this member has no listings for the requested platforms
         else:
             target = None  # push to all of this member's platforms
-        r = await engine.push_product(product.id, body.new_stock, target, db, bdq_override=bdq_override)
+        r = await engine.push_inventory_for_product(product.id, body.new_stock, target, db, bdq_override=bdq_override)
         results[product.id] = r
     return {"status": "done", "results": results}
 
@@ -575,19 +565,19 @@ async def push_stock(product_id: int, body: UpdateStockRequest, db: Session = De
             requested |= {"shopee", "shopee_sg"}
         target_platforms = list(requested)
 
-    result = await engine.push_product(product_id, body.new_stock, target_platforms, db)
+    result = await engine.push_inventory_for_product(product_id, body.new_stock, target_platforms, db)
     return {"status": "done", "results": result}
 
 @router.post("/sync/pull-all")
-async def pull_all(db: Session = Depends(get_db)):
-    results = await engine.pull_all(db)
+async def sync_all_inventory_route(db: Session = Depends(get_db)):
+    results = await engine.sync_all_inventory(db)
     return {"status": "done", "results": results}
 
 @router.post("/sync/pull/{platform}")
-async def pull_single(platform: str, db: Session = Depends(get_db)):
+async def sync_platform_inventory_route(platform: str, db: Session = Depends(get_db)):
     platform = _require_known_platform(platform)
-    ScraperClass = None
-    result = await engine.pull_platform(platform, ScraperClass, db)
+    PlatformClientClass = None
+    result = await engine.sync_platform_inventory(platform, PlatformClientClass, db)
     await engine._propagate_sales(db)
     return {"status": "done", "results": result}
 
@@ -840,146 +830,42 @@ def get_stats(db: Session = Depends(get_db)):
 def shopee_get_awb_order(order_id: str, package_number: str = "", db: Session = Depends(get_db)):
     """Fetch Shopee shipping document data for a stored order."""
     order = _get_shopee_order_or_404(order_id, db)
-    try:
-        logger.info(
-            "[Shopee AWB][get][start] order_id=%s platform=%s order_sn=%s package_number=%s",
-            order.id,
-            order.platform,
-            order.platform_order_id,
-            (package_number or ""),
-        )
-        out = shopee_get_awb_result(
-            platform=order.platform,
-            order_sn=order.platform_order_id,
-            package_number=package_number,
-        )
-        logger.info(
-            "[Shopee AWB][get][ok] order_id=%s order_sn=%s package_number=%s result_status=%s print_url=%s",
-            order.id,
-            order.platform_order_id,
-            out.get("package_number", ""),
-            out.get("result_status", ""),
-            bool(out.get("print_url")),
-        )
-        return {
-            "status": "ok",
-            "order_id": order.id,
-            "platform": order.platform,
-            "platform_order_id": order.platform_order_id,
-            **out,
-        }
-    except Exception as e:
-        logger.exception(
-            "[Shopee AWB][get][fail] order_id=%s platform=%s order_sn=%s package_number=%s",
-            order.id,
-            order.platform,
-            order.platform_order_id,
-            (package_number or ""),
-        )
-        raise HTTPException(400, f"Shopee AWB result fetch failed: {e}")
+    raise marketplace_unavailable("get awb result", "shopee")
 
 
 @router.get("/orders/shopee/{order_id}/awb/parameter")
 def shopee_get_awb_parameter_order(order_id: str, package_number: str = "", db: Session = Depends(get_db)):
     """Fetch Shopee shipping document parameter for a stored order."""
     order = _get_shopee_order_or_404(order_id, db)
-    try:
-        out = shopee_get_awb_parameter(
-            platform=order.platform,
-            order_sn=order.platform_order_id,
-            package_number=package_number,
-        )
-        return {
-            "status": "ok",
-            "order_id": order.id,
-            "platform": order.platform,
-            "platform_order_id": order.platform_order_id,
-            **out,
-        }
-    except Exception as e:
-        raise HTTPException(400, "Shopee AWB parameter fetch failed")
+    raise marketplace_unavailable("get awb parameter", "shopee")
 
 
 @router.get("/orders/shopee/{order_id}/tracking")
 def shopee_get_tracking_order(order_id: str, package_number: str = "", db: Session = Depends(get_db)):
     """Fetch Shopee tracking-number info for a stored order."""
     order = _get_shopee_order_or_404(order_id, db)
-    try:
-        out = shopee_get_tracking_number(
-            platform=order.platform,
-            order_sn=order.platform_order_id,
-            package_number=package_number,
-        )
-        return {
-            "status": "ok",
-            "order_id": order.id,
-            "platform": order.platform,
-            "platform_order_id": order.platform_order_id,
-            **out,
-        }
-    except Exception as e:
-        raise HTTPException(400, "Shopee tracking fetch failed")
+    raise marketplace_unavailable("get tracking number", "shopee")
 
 
 @router.post("/orders/lazada/{order_id}/arrange-shipment")
 async def lazada_arrange_shipment_order(order_id: int, body: LazadaShipmentRequest, db: Session = Depends(get_db)):
     """Arrange Lazada shipment for a stored order."""
     order = _get_lazada_order_or_404(order_id, db)
-    try:
-        out = await lazada_arrange_shipment(
-            order.platform_order_id,
-            delivery_type=(body.delivery_type or "").strip(),
-            shipping_provider=(body.shipping_provider or "").strip(),
-            tracking_number=(body.tracking_number or "").strip(),
-            order_item_ids=body.order_item_ids,
-        )
-        return {
-            "status": "ok",
-            "order_id": order.id,
-            "platform": order.platform,
-            "platform_order_id": order.platform_order_id,
-            **out,
-        }
-    except Exception as e:
-        raise HTTPException(400, "Lazada arrange shipment failed")
+    raise marketplace_unavailable("arrange shipment", "lazada")
 
 
 @router.post("/orders/lazada/{order_id}/awb/create")
 async def lazada_create_awb_order(order_id: int, body: LazadaAwbRequest, db: Session = Depends(get_db)):
     """Create Lazada AWB and optionally poll for printable URL."""
     order = _get_lazada_order_or_404(order_id, db)
-    try:
-        out = await lazada_create_awb(
-            order.platform_order_id,
-            wait_seconds=max(0, int(body.wait_seconds or 0)),
-            poll_seconds=max(1, int(body.poll_seconds or 1)),
-        )
-        return {
-            "status": "ok",
-            "order_id": order.id,
-            "platform": order.platform,
-            "platform_order_id": order.platform_order_id,
-            **out,
-        }
-    except Exception as e:
-        raise HTTPException(400, "Lazada AWB create failed")
+    raise marketplace_unavailable("create awb", "lazada")
 
 
 @router.get("/orders/lazada/{order_id}/awb")
 async def lazada_get_awb_order(order_id: int, db: Session = Depends(get_db)):
     """Fetch Lazada AWB result and normalized print URL."""
     order = _get_lazada_order_or_404(order_id, db)
-    try:
-        out = await lazada_get_awb_result(order.platform_order_id)
-        return {
-            "status": "ok",
-            "order_id": order.id,
-            "platform": order.platform,
-            "platform_order_id": order.platform_order_id,
-            **out,
-        }
-    except Exception as e:
-        raise HTTPException(400, "Lazada AWB result fetch failed")
+    raise marketplace_unavailable("get awb result", "lazada")
 
 
 @router.post("/orders/tiktok/{order_id}/arrange-shipment")
@@ -993,34 +879,7 @@ async def tiktok_arrange_shipment_order(order_id: int, body: TikTokShipmentReque
         order.platform_order_id,
         (body.package_id or ""),
     )
-    try:
-        out = await tiktok_arrange_shipment(
-            order.platform_order_id,
-            package_id=(body.package_id or ""),
-        )
-        logger.info(
-            "[TikTok AWB][arrange][ok] order_id=%s order_sn=%s package_id=%s used_path=%s",
-            order.id,
-            order.platform_order_id,
-            out.get("package_id", ""),
-            out.get("used_path", ""),
-        )
-        return {
-            "status": "ok",
-            "order_id": order.id,
-            "platform": order.platform,
-            "platform_order_id": order.platform_order_id,
-            **out,
-        }
-    except Exception as e:
-        logger.exception(
-            "[TikTok AWB][arrange][fail] order_id=%s platform=%s order_sn=%s package_id=%s",
-            order.id,
-            order.platform,
-            order.platform_order_id,
-            (body.package_id or ""),
-        )
-        raise HTTPException(400, f"TikTok arrange shipment failed: {e}")
+    raise marketplace_unavailable("arrange shipment", "tiktok")
 
 
 @router.post("/orders/tiktok/{order_id}/awb/create")
@@ -1036,37 +895,7 @@ async def tiktok_create_awb_order(order_id: int, body: TikTokAwbRequest, db: Ses
         max(0, int(body.wait_seconds or 0)),
         max(1, int(body.poll_seconds or 1)),
     )
-    try:
-        out = await tiktok_create_awb(
-            order.platform_order_id,
-            package_id=(body.package_id or ""),
-            wait_seconds=max(0, int(body.wait_seconds or 0)),
-            poll_seconds=max(1, int(body.poll_seconds or 1)),
-        )
-        logger.info(
-            "[TikTok AWB][create][ok] order_id=%s order_sn=%s package_id=%s used_path=%s print_url=%s",
-            order.id,
-            order.platform_order_id,
-            out.get("package_id", ""),
-            out.get("used_path", ""),
-            bool(out.get("print_url", "")),
-        )
-        return {
-            "status": "ok",
-            "order_id": order.id,
-            "platform": order.platform,
-            "platform_order_id": order.platform_order_id,
-            **out,
-        }
-    except Exception as e:
-        logger.exception(
-            "[TikTok AWB][create][fail] order_id=%s platform=%s order_sn=%s package_id=%s",
-            order.id,
-            order.platform,
-            order.platform_order_id,
-            (body.package_id or ""),
-        )
-        raise HTTPException(400, f"TikTok AWB create failed: {e}")
+    raise marketplace_unavailable("create awb", "tiktok")
 
 
 @router.get("/orders/tiktok/{order_id}/awb")
@@ -1080,42 +909,7 @@ async def tiktok_get_awb_order(order_id: int, package_id: str = "", db: Session 
         order.platform_order_id,
         (package_id or ""),
     )
-    try:
-        out = await tiktok_get_awb_result(order.platform_order_id, package_id=package_id)
-        logger.info(
-            "[TikTok AWB][get][ok] order_id=%s order_sn=%s package_id=%s used_path=%s print_url=%s",
-            order.id,
-            order.platform_order_id,
-            out.get("package_id", ""),
-            out.get("used_path", ""),
-            bool(out.get("print_url", "")),
-        )
-        return {
-            "status": "ok",
-            "order_id": order.id,
-            "platform": order.platform,
-            "platform_order_id": order.platform_order_id,
-            **out,
-        }
-    except TikTokAwbStateConflictError as e:
-        logger.warning(
-            "[TikTok AWB][get][conflict] order_id=%s platform=%s order_sn=%s package_id=%s code=%s",
-            order.id,
-            order.platform,
-            order.platform_order_id,
-            (package_id or ""),
-            e.code,
-        )
-        raise HTTPException(409, f"TikTok AWB conflict (code={e.code}): {e.message}")
-    except Exception as e:
-        logger.exception(
-            "[TikTok AWB][get][fail] order_id=%s platform=%s order_sn=%s package_id=%s",
-            order.id,
-            order.platform,
-            order.platform_order_id,
-            (package_id or ""),
-        )
-        raise HTTPException(400, f"TikTok AWB result fetch failed: {e}")
+    raise marketplace_unavailable("get awb result", "tiktok")
 
 # â””€ Image (product level) â”””””””””””””””””””””””””””””””””””””””””””””””””””””€
 @router.post("/products/{product_id}/image")

@@ -91,11 +91,11 @@ class SyncEngine:
         return set(deltas_by_platform.keys()) == {"shopee_sg"} and (deltas_by_platform.get("shopee_sg", 0) <= tiny_max)
 
     @staticmethod
-    def _is_shopee_sg_mirror_lock(platform: str, scraper) -> bool:
-        """Detect Shopee SG mirror-lock write rejection from scraper metadata."""
+    def _is_shopee_sg_mirror_lock(platform: str, client) -> bool:
+        """Detect Shopee SG mirror-lock write rejection from client metadata."""
         if platform != "shopee_sg":
             return False
-        meta = getattr(scraper, "last_update_meta", None) or {}
+        meta = getattr(client, "last_update_meta", None) or {}
         if meta.get("mirror_lock"):
             return True
         msg = f"{meta.get('message', '')} {meta.get('failed_reason', '')}".lower()
@@ -134,22 +134,22 @@ class SyncEngine:
 
     # ─── Full sync (read all platforms) ──────────────────────────────────────
 
-    async def pull_all(self, db: Session) -> dict:
-        """Pull current stock from all 3 platforms and update DB."""
+    async def sync_all_inventory(self, db: Session) -> dict:
+        """Sync current stock from all supported platforms and update DB."""
         started_at = time.time()
-        print("[SyncEngine][pull_all] START")
+        print("[SyncEngine][sync_all_inventory] START")
         results = {}
-        for platform, ScraperClass in ():
-            results[platform] = await self.pull_platform(platform, ScraperClass, db)
+        for platform, PlatformClientClass in ():
+            results[platform] = await self.sync_platform_inventory(platform, PlatformClientClass, db)
 
-        # After all platforms pulled, detect sales and propagate deductions
+        # After all platforms are synced, detect sales and propagate deductions
         sales_summary = await self._propagate_sales(db)
 
         elapsed = time.time() - started_at
         total_pulled = sum(r.get("pulled", 0) for r in results.values())
         total_errors = sum(r.get("errors", 0) for r in results.values())
         print(
-            "[SyncEngine][pull_all] DONE "
+            "[SyncEngine][sync_all_inventory] DONE "
             f"platforms={len(results)} pulled={total_pulled} errors={total_errors} "
             f"sales_groups={sales_summary.get('processed_groups', 0)} "
             f"sales_units={sales_summary.get('total_sold_units', 0)} "
@@ -160,22 +160,22 @@ class SyncEngine:
 
         return results
 
-    async def pull_platform(self, platform: str, ScraperClass, db: Session) -> dict:
-        """Pull inventory from one platform."""
+    async def sync_platform_inventory(self, platform: str, PlatformClientClass, db: Session) -> dict:
+        """Sync inventory for one platform."""
         started_at = time.time()
-        print(f"[SyncEngine][pull_platform] START platform={platform}")
-        scraper = ScraperClass()
+        print(f"[SyncEngine][sync_platform_inventory] START platform={platform}")
+        client = PlatformClientClass()
         result = {"platform": platform, "pulled": 0, "errors": 0}
         try:
-            await scraper.start()
-            if not await scraper.is_logged_in():
+            await client.start()
+            if not await client.is_logged_in():
                 self._log(db, platform=platform, action="error",
                           message="Not logged in — session expired or missing")
                 result["errors"] += 1
-                print(f"[SyncEngine][pull_platform] SKIP platform={platform} reason=not_logged_in")
+                print(f"[SyncEngine][sync_platform_inventory] SKIP platform={platform} reason=not_logged_in")
                 return result
 
-            items = await scraper.get_inventory()
+            items = await client.get_inventory()
             for item in items:
                 self._upsert_listing(db, platform, item)
                 result["pulled"] += 1
@@ -185,12 +185,12 @@ class SyncEngine:
         except Exception as e:
             self._log(db, platform=platform, action="error", message=str(e))
             result["errors"] += 1
-            print(f"[SyncEngine][pull_platform] ERROR platform={platform} err={e}")
+            print(f"[SyncEngine][sync_platform_inventory] ERROR platform={platform} err={e}")
         finally:
-            await scraper.close()
+            await client.close()
         elapsed = time.time() - started_at
         print(
-            f"[SyncEngine][pull_platform] DONE platform={platform} "
+            f"[SyncEngine][sync_platform_inventory] DONE platform={platform} "
             f"pulled={result['pulled']} errors={result['errors']} elapsed={elapsed:.2f}s"
         )
         return result
@@ -425,13 +425,13 @@ class SyncEngine:
                 for l in p.listings:
                     ctx_obj = group if group else p
                     push_qty = self._effective_push_stock(ctx_obj, new_master)
-                    ScraperClass = None
-                    if not ScraperClass:
+                    PlatformClientClass = None
+                    if not PlatformClientClass:
                         continue
-                    scraper = ScraperClass()
+                    client = PlatformClientClass()
                     try:
-                        await scraper.start()
-                        if not await scraper.is_logged_in():
+                        await client.start()
+                        if not await client.is_logged_in():
                             l.sync_status = "out_of_sync"
                             l.error_message = "Not logged in during auto-deduct push"
                             summary["write_failed"] += 1
@@ -443,7 +443,7 @@ class SyncEngine:
                                 message="Not logged in during auto-deduct push",
                             )
                             continue
-                        success = await scraper.update_stock(
+                        success = await client.update_stock(
                             l.platform_product_id, push_qty, l.platform_sku
                         )
                         if success:
@@ -461,7 +461,7 @@ class SyncEngine:
                                       old_stock=None, new_stock=push_qty,
                                       message=msg)
                         else:
-                            if self._is_shopee_sg_mirror_lock(l.platform, scraper):
+                            if self._is_shopee_sg_mirror_lock(l.platform, client):
                                 l.current_stock = push_qty
                                 l.sync_status = "db_only_synced"
                                 l.last_synced = now
@@ -499,7 +499,7 @@ class SyncEngine:
                         self._log(db, platform=l.platform, action="error",
                                   product_id=p.id, message=str(e))
                     finally:
-                        await scraper.close()
+                        await client.close()
             db.commit()
 
         print(
@@ -512,7 +512,7 @@ class SyncEngine:
 
     # ─── Push: update stock on platforms ─────────────────────────────────────
 
-    async def push_product(self, product_id: int, new_stock: int,
+    async def push_inventory_for_product(self, product_id: int, new_stock: int,
                            platforms: Optional[List[str]], db: Session,
                            bdq_override: Optional[int] = None) -> dict:
         """
@@ -527,7 +527,7 @@ class SyncEngine:
         target_platforms = platforms or [l.platform for l in product.listings]
         results = {}
         print(
-            f"[SyncEngine][push_product] START product_id={product_id} "
+            f"[SyncEngine][push_inventory_for_product] START product_id={product_id} "
             f"master_target={new_stock} target_platforms={target_platforms}"
         )
 
@@ -543,15 +543,15 @@ class SyncEngine:
             # Use bdq_override (group-level) if provided, else product-level
             effective_bdq = bdq_override if bdq_override is not None else (getattr(product, "backorder_display_qty", 0) or 0)
             push_qty = new_stock if new_stock > 0 else (effective_bdq if effective_bdq > 0 else 0)
-            ScraperClass = None
-            if not ScraperClass:
+            PlatformClientClass = None
+            if not PlatformClientClass:
                 continue
 
-            scraper = ScraperClass()
+            client = PlatformClientClass()
             success = False
             try:
-                await scraper.start()
-                if not await scraper.is_logged_in():
+                await client.start()
+                if not await client.is_logged_in():
                     listing.sync_status   = "error"
                     listing.error_message = "Not logged in"
                     self._log(db, platform=platform, action="error",
@@ -560,7 +560,7 @@ class SyncEngine:
                     results[platform] = "not_logged_in"
                     continue
 
-                success = await scraper.update_stock(
+                success = await client.update_stock(
                     listing.platform_product_id, push_qty, listing.platform_sku
                 )
             except Exception as e:
@@ -568,7 +568,7 @@ class SyncEngine:
                 self._log(db, platform=platform, action="error",
                           product_id=product_id, message=str(e))
             finally:
-                await scraper.close()
+                await client.close()
 
             if success:
                 listing.current_stock = push_qty
@@ -583,7 +583,7 @@ class SyncEngine:
                           old_stock=old_stock, new_stock=push_qty,
                           message=msg)
             else:
-                if self._is_shopee_sg_mirror_lock(platform, scraper):
+                if self._is_shopee_sg_mirror_lock(platform, client):
                     listing.current_stock = push_qty
                     listing.sync_status = "db_only_synced"
                     listing.last_synced = datetime.now()
@@ -615,7 +615,7 @@ class SyncEngine:
         ok_count = sum(1 for v in results.values() if v == "ok")
         db_only_count = sum(1 for v in results.values() if v == "db_only_synced")
         print(
-            f"[SyncEngine][push_product] DONE product_id={product_id} "
+            f"[SyncEngine][push_inventory_for_product] DONE product_id={product_id} "
             f"ok={ok_count} db_only={db_only_count} total={len(results)} "
             f"master_stock={product.master_stock}"
         )
@@ -649,7 +649,7 @@ class SyncEngine:
             if "shopee" in requested or "shopee_sg" in requested:
                 requested |= {"shopee", "shopee_sg"}
 
-            r = await self.push_product(
+            r = await self.push_inventory_for_product(
                 product.id,
                 product.master_stock,
                 list(requested),
