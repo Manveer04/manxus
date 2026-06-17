@@ -20,6 +20,14 @@ from app.marketplace import marketplace_unavailable
 
 class OrderEngine:
 
+    def __init__(self, scraper=None, shop_cipher: str | None = None):
+        # Optional external scrapers / tokens may be provided by callers.
+        # If not provided, marketplace-specific fetch methods will raise
+        # marketplace_unavailable so callers can handle the lack of integration.
+        self.scraper = scraper
+        self.shop_cipher = shop_cipher
+
+
     def _build_order_action_url(self, order: Order) -> str:
         """Build a deep link to Orders Admin for fast order handling from notification."""
         base_url = os.getenv("ORDER_ACTION_BASE_URL", os.getenv("PUBLIC_BASE_URL", "http://192.168.50.129:8080")).rstrip("/")
@@ -151,9 +159,12 @@ class OrderEngine:
 
     # ─── Lazada ──────────────────────────────────────────────────────────────
 
-    async def fetch_lazada_orders(self, db: Session):
+    async def fetch_lazada_orders(self, db: Session, scraper=None):
         """Fetch recent Lazada orders and store new ones."""
-        raise marketplace_unavailable("Lazada order fetch", "lazada")
+        # Require a configured scraper for Lazada API access
+        scraper = scraper or self.scraper
+        if not scraper:
+            raise marketplace_unavailable("Lazada order fetch", "lazada")
 
         # Fetch orders from last 2 hours to catch anything since last poll
         since = (datetime.now() - timedelta(hours=24)).strftime("%Y-%m-%dT%H:%M:%S+08:00")
@@ -292,7 +303,11 @@ class OrderEngine:
 
     async def fetch_tiktok_orders(self, db: Session):
         """Fetch recent TikTok orders and store new ones."""
-        raise marketplace_unavailable("TikTok order fetch", "tiktok")
+        # Require a configured scraper and shop cipher for TikTok API access
+        scraper = getattr(self, "scraper", None)
+        shop_cipher = getattr(self, "shop_cipher", None)
+        if not scraper or not shop_cipher:
+            raise marketplace_unavailable("TikTok order fetch", "tiktok")
 
         path = "/order/202309/orders/search"
         # page_size is a query param; create_time filters go in the body
