@@ -18,7 +18,8 @@ from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.database import init_db, SessionLocal
-from app.api.routes import router
+from app.inventory.routes import router as inventory_router
+from app.orders.routes import router as orders_router
 from app.models import DeviceToken
 from app.scheduler import start_scheduler, stop_scheduler
 from app.email_watcher import run_email_watcher
@@ -350,7 +351,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Inventory Sync", lifespan=lifespan)
-app.include_router(router)
+app.include_router(inventory_router, prefix="/api")
+app.include_router(orders_router, prefix="/api")
 app.include_router(fin_router, prefix="/api/financials", tags=["financials"])
 app.include_router(document_router, prefix="/api/financials", tags=["documents"])
 app.include_router(shopee_auth_router, prefix="/api/shopee")
