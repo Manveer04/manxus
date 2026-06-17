@@ -14,6 +14,8 @@
 
   This repository contains the core FastAPI application, background jobs, and database models for inventory, orders, documents, and finance. Some marketplace automation surfaces are intentionally stubbed or optional in this build, so the README now describes the implemented surface rather than implying every integration is fully bundled.
 
+Legacy browser scraping is no longer treated as a supported workflow here. It was removed from the primary path because it was unreliable and can create legal/compliance risk; supported flows should rely on explicit API or token-based integrations.
+
 The platform is composed of four integrated modules—**InvSync**, **ProcSync**, **DocFlow**, and **RevLens**—that work together to automate inventory management, order processing, document workflows, and financial analytics with **Manxus App** serving as the frontend dashboard.
 
 ---
@@ -189,34 +191,9 @@ docker compose up -d
 
 **Access the dashboard:** http://localhost:8080
 
-### 2. Initial Platform Login
+### 2. Marketplace Access
 
-Before syncing, you must log in to each seller platform. Sessions are stored in `./sessions/` volume.
-
-```bash
-# Log in to Shopee (example)
-docker compose exec inventory-sync python - <<'EOF'
-import asyncio
-from app.scrapers import SCRAPERS
-
-async def login_shopee():
-    scraper = SCRAPERS.get("shopee")
-    if not scraper:
-        print("Scrapers not configured")
-        return
-    
-    s = scraper()
-    await s.start(headless=False)  # Browser window appears
-    input("Log in to Shopee, then press Enter...")
-    await s.save_session()
-    await s.close()
-    print("✓ Shopee session saved!")
-
-asyncio.run(login_shopee())
-EOF
-```
-
-Repeat for Lazada and TikTok Shop as needed.
+Use the configured API/token credentials for Shopee, Lazada, and TikTok Shop. Browser-scraping login flows are not part of the supported deployment path in this repository.
 
 ### 3. Verify Configuration
 

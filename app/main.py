@@ -124,8 +124,7 @@ def _decode_session_token(token: str) -> dict[str, object] | None:
 
 
 def _is_session_authorized(request: Request) -> bool:
-    del request
-    return True
+    return _get_session_user(request) is not None
 
 
 def _is_protected_ui_path(path: str) -> bool:
