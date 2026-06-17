@@ -6,16 +6,7 @@ from apscheduler.triggers.interval import IntervalTrigger
 from app.database import SessionLocal
 from app.sync_engine import SyncEngine
 from app.order_engine import OrderEngine
-try:
-    from app.scrapers.shopee_api import _refresh_token, _load_token, SHOPS
-except Exception:
-    SHOPS = {}
-
-    def _load_token(shop_id):
-        return None
-
-    def _refresh_token(shop_id):
-        return None
+from app.scrapers.shopee_api import _refresh_token, _load_token, SHOPS
 
 scheduler = AsyncIOScheduler()
 _engine       = SyncEngine()

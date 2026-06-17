@@ -22,7 +22,6 @@ from app.api.routes import router
 from app.models import DeviceToken
 from app.scheduler import start_scheduler, stop_scheduler
 from app.email_watcher import run_email_watcher
-from app.yt_resolver import yt_router
 
 from app.financials.models import (
     FinancialTransaction,
@@ -71,6 +70,11 @@ def _get_configured_auth_credentials() -> tuple[str, str]:
     user = (os.getenv("APP_BASIC_AUTH_USER") or "").strip()
     password = (os.getenv("APP_BASIC_AUTH_PASSWORD") or "").strip()
     return user, password
+
+
+def _auth_credentials_configured() -> bool:
+    user, password = _get_configured_auth_credentials()
+    return bool(user and password)
 
 
 def _get_session_signing_secret() -> str:
@@ -220,9 +224,34 @@ def _log_device_login_attempt(client_ip: str, ok: bool, reason: str) -> None:
 
 
 def _get_session_user(request: Request) -> str | None:
-    del request
-    user, _ = _get_configured_auth_credentials()
-    return user or "public"
+    if not _auth_credentials_configured():
+        return "public"
+
+    token = (request.cookies.get(_SESSION_COOKIE_NAME) or "").strip()
+    if not token:
+        return None
+
+    payload = _decode_session_token(token)
+    if not payload:
+        return None
+
+    username = str(payload.get("u") or "").strip()
+    if not username:
+        return None
+
+    try:
+        expires_at = int(payload.get("exp") or 0)
+    except Exception:
+        return None
+
+    if expires_at <= int(time.time()):
+        return None
+
+    configured_user, _ = _get_configured_auth_credentials()
+    if configured_user and not secrets.compare_digest(username, configured_user):
+        return None
+
+    return username
 
 
 def _sanitize_next_path(candidate: str) -> str:
@@ -234,12 +263,13 @@ def _sanitize_next_path(candidate: str) -> str:
 
 
 def _is_authorized(request: Request) -> bool:
-    del request
-    return True
+    if not _auth_credentials_configured():
+        return True
+    return _get_session_user(request) is not None
 
 
 def _is_api_auth_required() -> bool:
-    return False
+    return (os.getenv("REQUIRE_API_AUTH", "true") or "true").strip().lower() in {"1", "true", "yes", "on"}
 
 
 def _get_int_env(name: str, default: int, minimum: int = 1) -> int:
@@ -256,7 +286,24 @@ def _get_int_env(name: str, default: int, minimum: int = 1) -> int:
 
 
 def _api_is_rate_limited(client_ip: str) -> tuple[bool, int]:
-    del client_ip
+    now = time.time()
+    events = _api_request_events[client_ip]
+
+    cutoff = now - _API_RATE_LIMIT_WINDOW_SECONDS
+    while events and events[0] < cutoff:
+        events.popleft()
+
+    if len(events) >= _API_RATE_LIMIT_MAX_REQUESTS:
+        retry_after = max(1, int(_API_RATE_LIMIT_WINDOW_SECONDS - (now - events[0])))
+        return True, retry_after
+
+    burst_cutoff = now - _API_RATE_LIMIT_BURST_WINDOW_SECONDS
+    burst_events = [ts for ts in events if ts >= burst_cutoff]
+    if len(burst_events) >= _API_RATE_LIMIT_BURST_MAX_REQUESTS:
+        retry_after = max(1, int(_API_RATE_LIMIT_BURST_WINDOW_SECONDS - (now - burst_events[0])))
+        return True, retry_after
+
+    events.append(now)
     return False, 0
 
 
@@ -309,7 +356,6 @@ app.include_router(fin_router, prefix="/api/financials", tags=["financials"])
 app.include_router(document_router, prefix="/api/financials", tags=["documents"])
 app.include_router(shopee_auth_router, prefix="/api/shopee")
 app.include_router(lazada_auth_router, prefix="/api/lazada")
-app.include_router(yt_router, prefix="/api/yt", tags=["yt-resolver"])
 
 
 @app.middleware("http")

@@ -19,10 +19,7 @@ from sqlalchemy.orm import Session
 
 from app.models import Product, PlatformListing, SyncLog, ProductGroup
 from app.sync_log_utils import get_latest_sync_log
-try:
-    from app.scrapers import SCRAPERS
-except Exception:
-    SCRAPERS = {}
+from app.scrapers import SCRAPERS
 
 
 class SyncEngine:

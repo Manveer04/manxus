@@ -20,8 +20,6 @@ RUN playwright install chromium
 
 COPY app/ ./app/
 COPY shopee_tracker.py ./
-COPY urls.txt ./
-COPY shopee_cookies.json ./
 COPY api.py ./
 COPY start.sh .
 RUN chmod +x start.sh

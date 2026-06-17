@@ -8,10 +8,7 @@ import asyncio
 import logging
 from typing import Optional
 
-try:
-    from app.scrapers import SCRAPERS
-except Exception:
-    SCRAPERS = {}
+from app.scrapers import SCRAPERS
 
 os.environ.setdefault("DISPLAY", ":99")
 log = logging.getLogger("app.login")

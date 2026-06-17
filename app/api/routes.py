@@ -18,88 +18,27 @@ import base64
 
 from app.database import get_db
 from app.models import Product, ProductGroup, PlatformListing, SyncLog, Order, OrderItem
-from app.sync_log_utils import get_latest_sync_log, get_recent_sync_logs
-from app.sync_engine import SyncEngine
-from app.order_engine import OrderEngine
 from app.notifier import notify_new_order
-try:
-    from app.scrapers import SCRAPERS
-except Exception:
-    SCRAPERS = {}
-
-try:
-    from app.scrapers.base import SESSIONS_DIR
-except Exception:
-    SESSIONS_DIR = Path("/app/sessions")
-
-
-def _scrapers_disabled_error(operation: str = "Scraper integration") -> HTTPException:
-    return HTTPException(503, f"{operation} is disabled in this build")
-
-
-try:
-    from app.scrapers.shopee_api import (
-        shopee_arrange_shipment,
-        shopee_create_awb,
-        shopee_get_awb_result,
-        shopee_get_awb_parameter,
-        shopee_get_shipping_parameter,
-        shopee_get_tracking_number,
-    )
-except Exception:
-    def shopee_arrange_shipment(*args, **kwargs):
-        raise _scrapers_disabled_error("Shopee shipment")
-
-    def shopee_create_awb(*args, **kwargs):
-        raise _scrapers_disabled_error("Shopee AWB")
-
-    def shopee_get_awb_result(*args, **kwargs):
-        raise _scrapers_disabled_error("Shopee AWB")
-
-    def shopee_get_awb_parameter(*args, **kwargs):
-        raise _scrapers_disabled_error("Shopee AWB")
-
-    def shopee_get_shipping_parameter(*args, **kwargs):
-        raise _scrapers_disabled_error("Shopee shipment")
-
-    def shopee_get_tracking_number(*args, **kwargs):
-        raise _scrapers_disabled_error("Shopee tracking")
-
-try:
-    from app.scrapers.lazada import (
-        lazada_arrange_shipment,
-        lazada_create_awb,
-        lazada_get_awb_result,
-    )
-except Exception:
-    async def lazada_arrange_shipment(*args, **kwargs):
-        raise _scrapers_disabled_error("Lazada shipment")
-
-    async def lazada_create_awb(*args, **kwargs):
-        raise _scrapers_disabled_error("Lazada AWB")
-
-    async def lazada_get_awb_result(*args, **kwargs):
-        raise _scrapers_disabled_error("Lazada AWB")
-
-try:
-    from app.scrapers.tiktok import (
-        TikTokAwbStateConflictError,
-        tiktok_arrange_shipment,
-        tiktok_create_awb,
-        tiktok_get_awb_result,
-    )
-except Exception:
-    class TikTokAwbStateConflictError(Exception):
-        pass
-
-    async def tiktok_arrange_shipment(*args, **kwargs):
-        raise _scrapers_disabled_error("TikTok shipment")
-
-    async def tiktok_create_awb(*args, **kwargs):
-        raise _scrapers_disabled_error("TikTok AWB")
-
-    async def tiktok_get_awb_result(*args, **kwargs):
-        raise _scrapers_disabled_error("TikTok AWB")
+from app.order_engine import OrderEngine
+from app.scrapers import SCRAPERS
+from app.scrapers.base import SESSIONS_DIR
+from app.scrapers.lazada import lazada_arrange_shipment, lazada_create_awb, lazada_get_awb_result
+from app.scrapers.shopee_api import (
+    shopee_arrange_shipment,
+    shopee_create_awb,
+    shopee_get_awb_result,
+    shopee_get_awb_parameter,
+    shopee_get_shipping_parameter,
+    shopee_get_tracking_number,
+)
+from app.scrapers.tiktok import (
+    TikTokAwbStateConflictError,
+    tiktok_arrange_shipment,
+    tiktok_create_awb,
+    tiktok_get_awb_result,
+)
+from app.sync_engine import SyncEngine
+from app.sync_log_utils import get_latest_sync_log, get_recent_sync_logs
 
 router = APIRouter(prefix="/api")
 engine = SyncEngine()

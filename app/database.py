@@ -1,7 +1,11 @@
+import logging
+
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import declarative_base, sessionmaker
 import os
 from urllib.parse import urlparse
+
+log = logging.getLogger(__name__)
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:////app/db/inventory.db")
 
@@ -83,8 +87,12 @@ def _run_migrations():
             try:
                 conn.execute(text(sql))
                 conn.commit()
-            except Exception:
-                pass  # column already exists or table not yet created
+            except Exception as exc:
+                message = str(exc).lower()
+                if "duplicate column name" in message or "already exists" in message:
+                    continue
+                log.exception("Unexpected database migration failure for SQL: %s", sql)
+                raise
 
 def init_db():
     from app.models import Product, PlatformListing, SyncLog, DeviceToken  # noqa

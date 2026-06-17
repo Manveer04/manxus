@@ -12,6 +12,8 @@
 
 ## Platform Overview
 
+  This repository contains the core FastAPI application, background jobs, and database models for inventory, orders, documents, and finance. Some marketplace automation surfaces are intentionally stubbed or optional in this build, so the README now describes the implemented surface rather than implying every integration is fully bundled.
+
 The platform is composed of four integrated modules—**InvSync**, **ProcSync**, **DocFlow**, and **RevLens**—that work together to automate inventory management, order processing, document workflows, and financial analytics.
 
 ---
@@ -568,7 +570,7 @@ docker compose up -d
 
 ### Kubernetes
 
-See `k8s/` directory for Helm charts (coming soon).
+Kubernetes manifests are not bundled in this repository.
 
 ### Cloud (AWS/GCP/Azure)
 
